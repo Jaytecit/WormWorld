@@ -33,6 +33,12 @@ from worm_world.experiments.learning_suite import (
     run_learning_evaluation_suite,
     verify_learning_evaluation_suite,
 )
+from worm_world.experiments.learning_survival_gate import (
+    SurvivalGateConfig,
+    SurvivalGateCriteria,
+    verify_survival_gate_preregistration,
+    write_survival_gate_preregistration,
+)
 from worm_world.experiments.runner import (
     ReplayArtifacts,
     run_noop_experiment,
@@ -54,6 +60,8 @@ __all__ = [
     "PlasticitySensitivityConfig",
     "ReplayArtifacts",
     "SandboxExperimentConfig",
+    "SurvivalGateConfig",
+    "SurvivalGateCriteria",
     "WorldConfig",
     "analyze_binary_action_margins",
     "center_binary_output_biases",
@@ -72,7 +80,9 @@ __all__ = [
     "verify_learning_replay",
     "verify_learning_evaluation_suite",
     "verify_sandbox_replay",
+    "verify_survival_gate_preregistration",
     "verify_plasticity_sensitivity",
     "verify_binary_margin_analysis",
     "write_binary_margin_analysis",
+    "write_survival_gate_preregistration",
 ]

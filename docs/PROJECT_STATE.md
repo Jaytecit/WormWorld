@@ -5,12 +5,12 @@
 - **Active phase:** Phase 3 — lifetime learning.
 - **Phase status:** Phase 2 is complete and its exit gate passed on 2026-07-15. Phase 3 is in
   progress; its scientific exit gate has not passed.
-- **Last completed ticket:** P3-T07 — development-only action-semantic eligibility traces. The
-  versioned mechanism and legacy replay gate passed, and development survival improved on all three
-  seeds, but unchanged birth criteria blocked confirmation; Phase 3 remains open.
+- **Last completed ticket:** P3-T08 — explicit survival-gate protocol amendment and preregistration.
+  The new gate is authorized from development evidence and fresh confirmation inputs are frozen,
+  but no fresh held-out run has executed; Phase 3 remains open.
 - **Repository state:** Local Git repository on `main`. The completed Phase 2, P3-T01, viewer
   contract, and Canvas viewer build was committed as `dd23200` on 2026-07-15. P3-T02 was committed
-  through P3-T05 was committed through `857ce44`, and P3-T06 as `dbde6b8`; P3-T07 and this handoff
+  through P3-T06 was committed through `dbde6b8`, and P3-T07 as `c5975ad`; P3-T08 and this handoff
   are uncommitted. No remote is configured and GitHub CLI is not installed.
 
 ## Completed viewer scope
@@ -35,6 +35,31 @@
   `docs/VIEWER_CONTRACT.md`, and this handoff.
 
 ## Completed Phase 3 scope
+
+**P3-T08 — explicit survival-gate protocol amendment and preregistration:**
+
+- Added separate strict versioned `SurvivalGateCriteria` and `SurvivalGateConfig` contracts. The
+  new protocol evaluates a lifetime controller by viable final population, extinction avoidance,
+  and final energy non-harm; it does not change simulator selection or provide a reward.
+- Births, deaths, and surviving descendants remain explicit outcomes. They do not enter the new
+  pass predicate because a fixed-horizon lifetime-learning comparison need not increase raw birth
+  count; evolutionary success remains actual surviving descendants in evolutionary experiments.
+- Added deterministic paired bootstrap intervals and a development authorization artifact that
+  binds the candidate genome, semantic rule, horizon, seed partitions, zero-control identity, and
+  exact P3-T07 sensitivity evidence ID before any held-out execution.
+- Retained `artifacts/phase3/survival_gate_preregistration_v1/` has config ID
+  `49aa29a2c93825536789a87625f3df873bd653dece1f157554c9b16233d63f9a`, development seeds
+  `101, 102, 103`, frozen held-out seeds `301, 302, 303, 304, 305`, 384 steps, rate `1.0`, semantic
+  eligibility, 2,000 bootstrap samples, and unchanged founder/world generation.
+- Development final-population differences are `[2, 2, 4]`, mean `2.6666666666666665`, 95% CI
+  `[2.0, 4.0]`, and win fraction `1.0`. Energy-fraction difference mean is
+  `0.06975988612170268`, 95% CI `[0.056305838195795384, 0.07999224043084271]`; learning extinction
+  is `0.0` versus control `0.6666666666666666`. `confirmation_authorized` is true.
+- Development births are `0, 2, 0` on versus `0, 2, 1` off. Surviving-descendant counts are zero in
+  every condition; this limitation is reported and prevents any evolutionary-success claim.
+- Changed files for this bounded ticket: `src/worm_world/experiments/learning_survival_gate.py`,
+  `src/worm_world/experiments/__init__.py`, `tests/test_learning_survival_gate.py`, the retained
+  preregistration artifacts, and this handoff.
 
 **P3-T07 — development-only action-semantic eligibility traces:**
 
@@ -293,7 +318,7 @@ python -m uv run pytest
 python -m uv run pre-commit validate-config
 ```
 
-Final expected test result: `85 passed`. Coverage includes genome validation/round trips and IDs;
+Final expected test result: `87 passed`. Coverage includes genome validation/round trips and IDs;
 pure phenotype identity/differences; seeded inheritance; compatibility; transitive ancestry;
 asexual and sexual births; reproduction conservation; fair shared-resource competition; stable
 entity/genome snapshots; exactly-once deaths; deterministic event ordering; strict config identity;
@@ -319,15 +344,18 @@ development screen.
 P3-T07 additions cover exact mixed-activation trace arithmetic, schema-v1 canonical identity,
 schema-v2 rule round trips, matched legacy-rule ablation, semantic/off/zero lifecycle, all retained
 Phase 3 replay artifacts, and blocked confirmation under unchanged criteria.
+P3-T08 additions cover canonical survival-gate identity, evidence/config binding, strict seed
+partitions, deterministic authorization CIs, extinction criteria, explicit birth/descendant
+reporting, honest unauthorized fixtures, authorization replay, and tamper rejection.
 
 Measured local benchmarks on 2026-07-15:
 
 ```powershell
 python -m uv run python -m worm_world.benchmark --mode sandbox --steps 100000
-# 100000 steps in 1.33615170000121 s; 74841.80127144953 steps/s
+# 100000 steps in 1.310454500024207 s; 76309.4025760931 steps/s
 
 python -m uv run python -m worm_world.benchmark --mode population --steps 1000
-# 1000 steps with 64 organisms in 2.6609510000562295 s; 375.8054920886813 world steps/s
+# 1000 steps with 64 organisms in 2.73546570003964 s; 365.56846608806273 world steps/s
 ```
 
 These are local regression measurements, not portable thresholds. The Phase 1 retained replay was
@@ -379,6 +407,10 @@ also re-simulated byte-for-byte with unchanged event hash
 15. Eligibility rule `action_activation` uses each controller channel's actual activation. It does
     not change the homeostatic neuromodulator or introduce a reward. The rule is schema-v2 and
     independently ablatable; schema-v1 remains `legacy_tanh` for exact historical replay.
+16. The Phase 3 confirmatory outcome is viable final population, with extinction and energy as
+    supporting measures. This protocol change is versioned and made before fresh seeds execute.
+    Births and surviving descendants remain reported; they are not converted into rewards or hidden
+    objectives, and evolutionary claims still require descendants.
 
 ## Known blockers and limitations
 
@@ -407,6 +439,9 @@ also re-simulated byte-for-byte with unchanged event hash
 - Correcting binary eligibility produced strong development survival/final-population advantages
   but not birth-count advantage. This creates a protocol question that must be resolved explicitly;
   confirmation cannot proceed under the existing birth-gated criteria.
+- The amended survival gate is development-authorized, but no confirmatory result exists yet. All
+  development surviving-descendant counts are zero, so the current evidence is lifetime survival
+  only and cannot support a learning-enhanced reproductive/evolutionary-success claim.
 - The Canvas viewer is replay-only: it has no live streaming, terrain height, dynamic ecology, or
   materials. Those require backward-compatible later viewer schemas. Automated direct-file visual
   QA was unavailable because the in-app browser disallows `file:` navigation; exporter fidelity,
@@ -415,18 +450,16 @@ also re-simulated byte-for-byte with unchanged event hash
 
 ## Exact next ticket
 
-**P3-T08 — explicit survival-gate protocol amendment and preregistration**
+**P3-T09 — execute the frozen survival confirmation suite**
 
-Add a new versioned Phase 3 gate criteria type that treats held-out viable final population and
-extinction avoidance as the primary lifetime-learning outcomes, with births and surviving
-descendants still reported but not assumed to increase within the fixed horizon. Document why this
-does not alter evolutionary selection: the simulator still selects only through actual survival and
-reproduction; the experiment merely evaluates a lifetime controller without supplying a reward.
-Using development seeds `101, 102, 103` only, require a strictly positive paired final-population
-advantage on every seed, positive deterministic confidence-interval lower bound, zero-control
-identity, and no hidden task signal before authorizing confirmation. Pre-register fresh seeds
-`301`–`305`, the 384-step horizon, the semantic eligibility rule, and frozen thresholds in a new
-suite config, but do not execute them in this ticket. Test old criteria/schema replay, new strict
-identity, honest authorization, CI arithmetic, descendant reporting, and every retained artifact.
-Run formatting, lint, strict types, the full suite, pre-commit validation, and both benchmarks; then
-update this handoff.
+Execute exactly the authorized config in
+`artifacts/phase3/survival_gate_preregistration_v1/survival_gate_config.json` on held-out seeds
+`301`–`305`; do not change the genome, horizon, world generator, rule, thresholds, bootstrap inputs,
+or seed list. Run matched semantic plasticity-on, plasticity-off, zero-rate, and legacy-rule
+conditions, retaining config, raw diagnostics, snapshots, report, and manifest for every child.
+Verify every child replay and exact off/zero identity, compute the frozen paired population/energy
+intervals and extinction fractions, and report births plus surviving descendants without adding
+them to the predicate. If and only if the stored gate passes, record Phase 3's scientific exit
+evidence and exact Phase 4 first ticket; otherwise keep Phase 3 open with a new development-only
+ticket. Run formatting, lint, strict types, the full suite, pre-commit validation, both benchmarks,
+and every retained replay; then update this handoff and commit the result.
