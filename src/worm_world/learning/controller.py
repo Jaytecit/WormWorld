@@ -58,8 +58,8 @@ class PlasticityParameters:
             ("injury_weight", self.injury_weight),
         ):
             _finite(name, value)
-        if not 0.0 <= self.learning_rate <= 0.1:
-            raise ValueError("learning_rate must be in [0, 0.1]")
+        if not 0.0 <= self.learning_rate <= 1.0:
+            raise ValueError("learning_rate must be in [0, 1]")
         if not 0.0 <= self.trace_decay <= 1.0:
             raise ValueError("trace_decay must be in [0, 1]")
         if any(

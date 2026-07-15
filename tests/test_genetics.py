@@ -80,7 +80,7 @@ def test_version_2_inheritance_and_mutation_stay_in_declared_bounds() -> None:
         child = inherit_genome(first, second, random.Random(seed), mutation_enabled=True)
         assert child.brain_priors is not None
         assert all(-1.0 <= value <= 1.0 for value in child.brain_priors)
-        assert child.plasticity_rate is not None and 0.0 <= child.plasticity_rate <= 0.1
+        assert child.plasticity_rate is not None and 0.0 <= child.plasticity_rate <= 1.0
         assert child.eligibility_trace_decay is not None
         assert 0.0 <= child.eligibility_trace_decay <= 1.0
 

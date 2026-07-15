@@ -5,13 +5,13 @@
 - **Active phase:** Phase 3 — lifetime learning.
 - **Phase status:** Phase 2 is complete and its exit gate passed on 2026-07-15. Phase 3 is in
   progress; its scientific exit gate has not passed.
-- **Last completed ticket:** P3-T04 — predeclared matched held-out evaluation harness. The harness
-  and retained suite passed their engineering acceptance checks, but the scientific result was a
-  correctly reported failed gate; Phase 3 remains open.
+- **Last completed ticket:** P3-T05 — development-only plasticity sensitivity and causal action
+  divergence. The bounded mechanism/analysis gate passed, but the candidate failed its predeclared
+  development outcome screen; Phase 3 remains open and fresh confirmation remains blocked.
 - **Repository state:** Local Git repository on `main`. The completed Phase 2, P3-T01, viewer
   contract, and Canvas viewer build was committed as `dd23200` on 2026-07-15. P3-T02 was committed
-  as `eafab42` and P3-T03 as `2d201ed`; P3-T04 and this handoff are uncommitted. No remote is
-  configured and GitHub CLI is not installed.
+  as `eafab42`, P3-T03 as `2d201ed`, and P3-T04 as `2a8285c`; P3-T05 and this handoff are
+  uncommitted. No remote is configured and GitHub CLI is not installed.
 
 ## Completed viewer scope
 
@@ -35,6 +35,33 @@
   `docs/VIEWER_CONTRACT.md`, and this handoff.
 
 ## Completed Phase 3 scope
+
+**P3-T05 — development-only plasticity sensitivity and causal action divergence:**
+
+- Analyzed only development seeds `101, 102, 103`. At the previous maximum rate `0.1`, learned
+  weights changed continuous motion from step two but produced no eat/drink/rest divergence, only
+  four reproduction-decision divergences, and zero birth/final-population advantage.
+- Widened the existing genome-encoded plasticity-rate bound from `[0, 0.1]` to `[0, 1.0]`; no new
+  parameter, sensor, action, signal, objective, or inheritance path was added. Retained version-1
+  and version-2 JSON values and replays remain valid and byte-identical.
+- Added a strict `PlasticitySensitivityConfig`, deterministic paired action-divergence analysis,
+  development-only on/off/zero-rate runner, child replay verification, and an authorization gate
+  that prevents confirmatory execution unless development birth/population criteria pass.
+- Retained `artifacts/phase3/development_sensitivity_v1/` uses rate `1.0`, 128 steps, four founders,
+  development seeds `101, 102, 103`, sensitivity config ID
+  `3d92e50aaf1e29e6345405c73ea845c87069cb964bc48fbfa60e16e161bef72e`, and nine independently
+  replayed child artifacts.
+- Plasticity-on diverged in continuous motion on 508/512, 722/726, and 618/622 matched entity steps;
+  reproduction diverged 25, 116, and 33 times, and drinking diverged ten times on seed 102. The
+  plasticity-off and zero-rate controls had exactly zero output/action divergence on every seed.
+- The candidate still had zero birth and final-population advantage on all development seeds, so
+  `candidate_development_passed` and `future_confirmatory_authorized` are false. Fresh seeds
+  `301`–`305` and unchanged criteria are stored in unexecuted suite config ID
+  `ec53929b02d90314ca1f4af32d70067ff145c2c0ff8c388d1b0880e487e85b2b`.
+- Changed files for this bounded ticket: `src/worm_world/experiments/learning_sensitivity.py`,
+  `src/worm_world/experiments/__init__.py`, `src/worm_world/genetics/genome.py`,
+  `src/worm_world/learning/controller.py`, `tests/test_learning_sensitivity.py`,
+  `tests/test_genetics.py`, the retained development artifacts, and this handoff.
 
 **P3-T04 — predeclared matched held-out evaluation harness:**
 
@@ -217,7 +244,7 @@ python -m uv run pytest
 python -m uv run pre-commit validate-config
 ```
 
-Final expected test result: `80 passed`. Coverage includes genome validation/round trips and IDs;
+Final expected test result: `83 passed`. Coverage includes genome validation/round trips and IDs;
 pure phenotype identity/differences; seeded inheritance; compatibility; transitive ancestry;
 asexual and sexual births; reproduction conservation; fair shared-resource competition; stable
 entity/genome snapshots; exactly-once deaths; deterministic event ordering; strict config identity;
@@ -234,15 +261,18 @@ deterministic learning artifacts, and tamper detection.
 P3-T04 additions cover locked/disjoint seed partitions, strict suite identity, exact condition
 matching, deterministic paired bootstrap intervals, honest failed-gate reporting, child-manifest
 binding, full-suite replay, and tamper rejection.
+P3-T05 additions cover the widened bounded rate, deterministic causal action comparison,
+development-only partition enforcement, exact off/zero control identity, confirmatory authorization,
+future-suite preregistration without execution, full child replay, and tamper rejection.
 
 Measured local benchmarks on 2026-07-15:
 
 ```powershell
 python -m uv run python -m worm_world.benchmark --mode sandbox --steps 100000
-# 100000 steps in 1.487979100085795 s; 67205.24501603156 steps/s
+# 100000 steps in 1.4616861999966204 s; 68414.13704270535 steps/s
 
 python -m uv run python -m worm_world.benchmark --mode population --steps 1000
-# 1000 steps with 64 organisms in 2.9198542999802157 s; 342.48284238250375 world steps/s
+# 1000 steps with 64 organisms in 2.668728999909945 s; 374.71020850515157 world steps/s
 ```
 
 These are local regression measurements, not portable thresholds. The Phase 1 retained replay was
@@ -284,6 +314,10 @@ also re-simulated byte-for-byte with unchanged event hash
 12. Phase 3 evaluation uses development seeds only for mechanism work. Once a held-out seed is run,
     it remains reported evidence and cannot be reused for tuning. Gate thresholds and bootstrap
     settings are serialized before evaluation; a failed gate is a valid engineering outcome.
+13. Plasticity rate remains genome encoded and inherited, but its allowed upper bound is `1.0` after
+    development diagnostics showed that the prior `0.1` bound changed continuous motion while
+    almost never crossing discrete action thresholds. Learned per-synapse deltas remain clipped to
+    `[-2, 2]`, lifetime-only, and excluded from genomes and snapshots.
 
 ## Known blockers and limitations
 
@@ -303,6 +337,9 @@ also re-simulated byte-for-byte with unchanged event hash
 - The first locked held-out suite failed with zero birth/population advantage across all five
   seeds. Seeds `201`–`205` are consumed held-out evidence and must not be used for P3-T05 tuning or
   a later confirmatory gate. Only development seeds `101`–`103` may inform the next mechanism work.
+- Rate `1.0` establishes causal action divergence but still has zero development birth/population
+  advantage. Its preregistered seeds `301`–`305` must not be executed while
+  `future_confirmatory_authorized` is false.
 - The Canvas viewer is replay-only: it has no live streaming, terrain height, dynamic ecology, or
   materials. Those require backward-compatible later viewer schemas. Automated direct-file visual
   QA was unavailable because the in-app browser disallows `file:` navigation; exporter fidelity,
@@ -311,17 +348,16 @@ also re-simulated byte-for-byte with unchanged event hash
 
 ## Exact next ticket
 
-**P3-T05 — development-only plasticity sensitivity and causal action divergence**
+**P3-T06 — development-only neutral action-margin priors**
 
-Using only development seeds `101, 102, 103` and their retained diagnostics, add a deterministic
-analysis that identifies whether learned output-weight changes causally alter controller outputs
-and executed actions before reproduction opportunities. Add one independently configurable,
-genome-encoded plasticity sensitivity parameter only if the analysis demonstrates that bounded
-updates are systematically too small to affect actions; do not hand-code resource actions or use
-births, food, position, or task completion as a neuromodulator. Compare each candidate against
-plasticity-off and zero-rate controls on development seeds only, save diagnostic/ablation artifacts,
-and do not run seeds `201`–`205` or any new held-out seeds. Pre-register a fresh confirmatory seed
-set and unchanged Phase 3 gate criteria for the following ticket, but do not execute it. Test causal
-action divergence, bounded updates, zero-rate identity, lifetime reset, replay bytes, and all prior
-artifacts. Run formatting, lint, strict types, the full suite, pre-commit validation, and both
-benchmarks; then update this handoff.
+Using only seeds `101, 102, 103`, add a deterministic action-margin analysis for the four binary
+controller channels and construct one version-2 candidate genome whose inherited binary output
+biases are centered at the neutral decision boundary while all sensor inputs, recurrent weights,
+homeostatic modulation, actions, and world rules remain unchanged. This is an unbiased prior, not a
+scripted resource/reproduction policy: do not choose positive/negative actions from outcomes or add
+task signals. Compare centered-prior plasticity-on, plasticity-off, and zero-rate controls and retain
+replayable development artifacts. Require development birth and final-population advantage before
+authorizing any fresh held-out run; otherwise record failure and leave seeds `301`–`305` untouched.
+Test exact prior construction, action-margin reporting, off/zero identity, lifetime reset, artifact
+replay/tamper rejection, and every prior replay. Run formatting, lint, strict types, the full suite,
+pre-commit validation, and both benchmarks; then update this handoff.

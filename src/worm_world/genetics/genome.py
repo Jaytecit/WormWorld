@@ -129,7 +129,7 @@ class Genome:
         for value in self.brain_priors:
             _bounded("brain prior", value, -1.0, 1.0)
         assert self.plasticity_rate is not None and self.eligibility_trace_decay is not None
-        _bounded("plasticity_rate", self.plasticity_rate, 0.0, 0.1)
+        _bounded("plasticity_rate", self.plasticity_rate, 0.0, 1.0)
         _bounded("eligibility_trace_decay", self.eligibility_trace_decay, 0.0, 1.0)
         assert self.homeostatic_energy_weight is not None
         assert self.homeostatic_hydration_weight is not None
@@ -344,7 +344,7 @@ def inherit_genome(
             "fertility_energy_fraction": (0.25, 0.95),
             "offspring_energy_fraction": (0.05, 0.4),
             "mutation_scale": (0.0, 0.5),
-            "plasticity_rate": (0.0, 0.1),
+            "plasticity_rate": (0.0, 1.0),
             "eligibility_trace_decay": (0.0, 1.0),
             "homeostatic_energy_weight": (-4.0, 4.0),
             "homeostatic_hydration_weight": (-4.0, 4.0),
