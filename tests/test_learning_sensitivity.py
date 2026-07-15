@@ -6,10 +6,14 @@ import pytest
 from worm_world.experiments import (
     LearningExperimentConfig,
     PlasticitySensitivityConfig,
+    analyze_binary_action_margins,
+    center_binary_output_biases,
     compare_action_divergence,
     run_plasticity_sensitivity,
     simulate_learning,
+    verify_binary_margin_analysis,
     verify_plasticity_sensitivity,
+    write_binary_margin_analysis,
 )
 
 PROJECT_ROOT = Path(__file__).parents[1]
@@ -80,3 +84,28 @@ def test_sensitivity_artifacts_replay_and_block_unqualified_confirmation(tmp_pat
     events.write_bytes(events.read_bytes() + b"{}\n")
     with pytest.raises(ValueError, match="event replay diverged"):
         verify_plasticity_sensitivity(directory)
+
+
+def test_binary_bias_centering_and_margin_analysis_are_exact(tmp_path: Path) -> None:
+    original = _config().candidate_genome
+    centered = center_binary_output_biases(original)
+    assert original.brain_priors is not None and centered.brain_priors is not None
+    assert centered.brain_priors[:-4] == original.brain_priors[:-4]
+    assert centered.brain_priors[-4:] == (0.0, 0.0, 0.0, 0.0)
+    run_config = LearningExperimentConfig.training_fixture(
+        101,
+        plasticity_enabled=True,
+        founder_count=2,
+        step_count=4,
+        founder_genome=centered,
+    )
+    margins = analyze_binary_action_margins(simulate_learning(run_config))
+    assert set(margins) == {"eat", "drink", "rest", "reproduce"}
+    assert all(isinstance(value, dict) and value["sample_count"] == 8 for value in margins.values())
+
+    sensitivity = replace(_config(), candidate_genome=centered)
+    directory = tmp_path / "margins"
+    run_plasticity_sensitivity(sensitivity, artifact_directory=directory, project_root=PROJECT_ROOT)
+    analysis = write_binary_margin_analysis(directory)
+    assert analysis == verify_binary_margin_analysis(directory)
+    assert analysis["binary_output_biases"] == [0.0, 0.0, 0.0, 0.0]

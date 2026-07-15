@@ -5,13 +5,13 @@
 - **Active phase:** Phase 3 — lifetime learning.
 - **Phase status:** Phase 2 is complete and its exit gate passed on 2026-07-15. Phase 3 is in
   progress; its scientific exit gate has not passed.
-- **Last completed ticket:** P3-T05 — development-only plasticity sensitivity and causal action
-  divergence. The bounded mechanism/analysis gate passed, but the candidate failed its predeclared
-  development outcome screen; Phase 3 remains open and fresh confirmation remains blocked.
+- **Last completed ticket:** P3-T06 — development-only neutral action-margin priors. The exact
+  construction and replayable margin analysis passed engineering checks, but the candidate failed
+  its development outcome screen; Phase 3 remains open and fresh confirmation remains blocked.
 - **Repository state:** Local Git repository on `main`. The completed Phase 2, P3-T01, viewer
   contract, and Canvas viewer build was committed as `dd23200` on 2026-07-15. P3-T02 was committed
-  as `eafab42`, P3-T03 as `2d201ed`, and P3-T04 as `2a8285c`; P3-T05 and this handoff are
-  uncommitted. No remote is configured and GitHub CLI is not installed.
+  as `eafab42`, P3-T03 as `2d201ed`, P3-T04 as `2a8285c`, and P3-T05 as `857ce44`; P3-T06 and this
+  handoff are uncommitted. No remote is configured and GitHub CLI is not installed.
 
 ## Completed viewer scope
 
@@ -35,6 +35,28 @@
   `docs/VIEWER_CONTRACT.md`, and this handoff.
 
 ## Completed Phase 3 scope
+
+**P3-T06 — development-only neutral action-margin priors:**
+
+- Added an exact version-2 prior transformation that sets only the four binary output biases to the
+  neutral zero logit. Every input/recurrent/output weight, motion bias, plasticity coefficient,
+  sensor, action, and world rule remains unchanged; no action direction is favored from outcomes.
+- Added deterministic signed/absolute margin analysis for eat, drink, rest, and reproduce logits,
+  plus generation and replay verification of a stored `margin_analysis.json` beside the existing
+  sensitivity artifact contract.
+- Retained `artifacts/phase3/development_neutral_margins_v1/` uses rate `1.0`, 128 steps, four
+  founders, development seeds `101, 102, 103`, exactly zero binary output biases, and sensitivity
+  config ID `bf302b3301a00cb047c886611c8cf341c4e9ee3ba2e6306c54378d565fd862a3`.
+- All nine on/off/zero child runs and the margin analysis replayed. Off and zero-rate outputs/actions
+  remained exactly identical. Plasticity-on changed continuous motion on 508/512 matched steps for
+  every seed, but caused only three rest decisions on seed 102 and no eat, drink, or reproduce
+  divergence on any seed.
+- Every condition produced zero births, zero deaths, and four final organisms. Development birth,
+  population, and win advantages were zero, so the candidate and future confirmation remain
+  blocked. Seeds `301`–`305` were not executed.
+- Changed files for this bounded ticket: `src/worm_world/experiments/learning_sensitivity.py`,
+  `src/worm_world/experiments/__init__.py`, `tests/test_learning_sensitivity.py`, the retained
+  neutral-margin artifacts, and this handoff.
 
 **P3-T05 — development-only plasticity sensitivity and causal action divergence:**
 
@@ -244,7 +266,7 @@ python -m uv run pytest
 python -m uv run pre-commit validate-config
 ```
 
-Final expected test result: `83 passed`. Coverage includes genome validation/round trips and IDs;
+Final expected test result: `84 passed`. Coverage includes genome validation/round trips and IDs;
 pure phenotype identity/differences; seeded inheritance; compatibility; transitive ancestry;
 asexual and sexual births; reproduction conservation; fair shared-resource competition; stable
 entity/genome snapshots; exactly-once deaths; deterministic event ordering; strict config identity;
@@ -264,15 +286,18 @@ binding, full-suite replay, and tamper rejection.
 P3-T05 additions cover the widened bounded rate, deterministic causal action comparison,
 development-only partition enforcement, exact off/zero control identity, confirmatory authorization,
 future-suite preregistration without execution, full child replay, and tamper rejection.
+P3-T06 additions cover exact neutral-bias construction, per-channel binary logit margins, stored
+margin-analysis replay, preserved off/zero identity, and blocked confirmation after a failed
+development screen.
 
 Measured local benchmarks on 2026-07-15:
 
 ```powershell
 python -m uv run python -m worm_world.benchmark --mode sandbox --steps 100000
-# 100000 steps in 1.4616861999966204 s; 68414.13704270535 steps/s
+# 100000 steps in 1.4002331000519916 s; 71416.6805486079 steps/s
 
 python -m uv run python -m worm_world.benchmark --mode population --steps 1000
-# 1000 steps with 64 organisms in 2.668728999909945 s; 374.71020850515157 world steps/s
+# 1000 steps with 64 organisms in 2.711624399991706 s; 368.782638186564 world steps/s
 ```
 
 These are local regression measurements, not portable thresholds. The Phase 1 retained replay was
@@ -318,6 +343,9 @@ also re-simulated byte-for-byte with unchanged event hash
     development diagnostics showed that the prior `0.1` bound changed continuous motion while
     almost never crossing discrete action thresholds. Learned per-synapse deltas remain clipped to
     `[-2, 2]`, lifetime-only, and excluded from genomes and snapshots.
+14. Neutral binary action priors mean a zero inherited output bias, not a prescribed action. The
+    failed centered-bias candidate is retained rather than selected: it suppressed reproduction
+    divergence and did not improve any population outcome.
 
 ## Known blockers and limitations
 
@@ -340,6 +368,9 @@ also re-simulated byte-for-byte with unchanged event hash
 - Rate `1.0` establishes causal action divergence but still has zero development birth/population
   advantage. Its preregistered seeds `301`–`305` must not be executed while
   `future_confirmatory_authorized` is false.
+- Centering binary output biases also failed and exposed a mechanism limitation: eligibility uses
+  `tanh(raw_output)` for every channel, so a binary unit at its neutral zero logit has zero
+  postsynaptic eligibility even though its sigmoid decision probability is `0.5`.
 - The Canvas viewer is replay-only: it has no live streaming, terrain height, dynamic ecology, or
   materials. Those require backward-compatible later viewer schemas. Automated direct-file visual
   QA was unavailable because the in-app browser disallows `file:` navigation; exporter fidelity,
@@ -348,16 +379,17 @@ also re-simulated byte-for-byte with unchanged event hash
 
 ## Exact next ticket
 
-**P3-T06 — development-only neutral action-margin priors**
+**P3-T07 — development-only action-semantic eligibility traces**
 
-Using only seeds `101, 102, 103`, add a deterministic action-margin analysis for the four binary
-controller channels and construct one version-2 candidate genome whose inherited binary output
-biases are centered at the neutral decision boundary while all sensor inputs, recurrent weights,
-homeostatic modulation, actions, and world rules remain unchanged. This is an unbiased prior, not a
-scripted resource/reproduction policy: do not choose positive/negative actions from outcomes or add
-task signals. Compare centered-prior plasticity-on, plasticity-off, and zero-rate controls and retain
-replayable development artifacts. Require development birth and final-population advantage before
-authorizing any fresh held-out run; otherwise record failure and leave seeds `301`–`305` untouched.
-Test exact prior construction, action-margin reporting, off/zero identity, lifetime reset, artifact
-replay/tamper rejection, and every prior replay. Run formatting, lint, strict types, the full suite,
-pre-commit validation, and both benchmarks; then update this handoff.
+Use the controller channel's actual activation function when updating eligibility: retain
+`tanh(raw_output)` for the two continuous motor channels and use the already computed sigmoid
+probability for eat, drink, rest, and reproduce. This is a local neural-credit correction, not a
+task signal; the neuromodulator remains exclusively genome-weighted energy/hydration/injury change.
+Version the eligibility rule in experiment configuration so all retained v1 artifacts continue to
+replay byte-for-byte, and keep the old rule selectable as an ablation. Evaluate only development
+seeds `101, 102, 103` with matched plasticity-off, zero-rate, and legacy-rule controls. Require birth
+and final-population development advantage before authorizing fresh held-out seeds; otherwise record
+failure and leave `301`–`305` untouched. Test exact trace arithmetic for both rule versions, legacy
+replay identity, off/zero identity, clean lifetime reset, artifact verification, and every prior
+replay. Run formatting, lint, strict types, the full suite, pre-commit validation, and both
+benchmarks; then update this handoff.

@@ -19,9 +19,13 @@ from worm_world.experiments.learning import (
 from worm_world.experiments.learning_sensitivity import (
     ActionDivergenceReport,
     PlasticitySensitivityConfig,
+    analyze_binary_action_margins,
+    center_binary_output_biases,
     compare_action_divergence,
     run_plasticity_sensitivity,
+    verify_binary_margin_analysis,
     verify_plasticity_sensitivity,
+    write_binary_margin_analysis,
 )
 from worm_world.experiments.learning_suite import (
     LearningGateCriteria,
@@ -51,6 +55,8 @@ __all__ = [
     "ReplayArtifacts",
     "SandboxExperimentConfig",
     "WorldConfig",
+    "analyze_binary_action_margins",
+    "center_binary_output_biases",
     "run_noop_experiment",
     "run_plasticity_sensitivity",
     "run_evolution_experiment",
@@ -67,4 +73,6 @@ __all__ = [
     "verify_learning_evaluation_suite",
     "verify_sandbox_replay",
     "verify_plasticity_sensitivity",
+    "verify_binary_margin_analysis",
+    "write_binary_margin_analysis",
 ]

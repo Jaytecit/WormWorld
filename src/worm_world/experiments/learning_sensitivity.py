@@ -127,6 +127,42 @@ class ActionDivergenceReport:
         return cast(dict[str, JsonValue], values)
 
 
+def center_binary_output_biases(genome: Genome) -> Genome:
+    """Return a v2 genome with all four binary-action biases at the neutral logit."""
+    if genome.schema_version != 2 or genome.brain_priors is None:
+        raise ValueError("binary bias centering requires a version-2 genome")
+    if len(genome.brain_priors) < 6:
+        raise ValueError("controller priors do not contain output biases")
+    return replace(genome, brain_priors=(*genome.brain_priors[:-4], 0.0, 0.0, 0.0, 0.0))
+
+
+def analyze_binary_action_margins(simulation: LearningSimulation) -> dict[str, JsonValue]:
+    """Summarize signed and absolute pre-threshold logits for binary action channels."""
+    events = _controller_events(simulation)
+    channels = {"eat": 2, "drink": 3, "rest": 4, "reproduce": 5}
+    report: dict[str, JsonValue] = {}
+    for name, index in channels.items():
+        values: list[float] = []
+        for event in events.values():
+            outputs = event["controller_outputs"]
+            if not isinstance(outputs, list) or len(outputs) != 6:
+                raise ValueError("controller outputs must contain six values")
+            value = outputs[index]
+            if isinstance(value, bool) or not isinstance(value, int | float):
+                raise ValueError("controller output must be numeric")
+            values.append(float(value))
+        if not values:
+            raise ValueError("binary margin analysis requires controller events")
+        report[name] = {
+            "maximum": max(values),
+            "mean_absolute": sum(abs(value) for value in values) / len(values),
+            "minimum": min(values),
+            "minimum_absolute": min(abs(value) for value in values),
+            "sample_count": len(values),
+        }
+    return report
+
+
 def _controller_events(
     simulation: LearningSimulation,
 ) -> dict[tuple[int, int], dict[str, JsonValue]]:
@@ -355,4 +391,53 @@ def verify_plasticity_sensitivity(artifact_directory: Path) -> dict[str, JsonVal
     )
     if recomputed != stored_raw:
         raise ValueError("sensitivity analysis replay diverged")
+    return recomputed
+
+
+def _binary_margin_analysis(config: PlasticitySensitivityConfig) -> dict[str, JsonValue]:
+    records: list[JsonValue] = []
+    for seed in config.development_seeds:
+        for condition in ("on", "off", "zero"):
+            run_config = _condition_config(config, seed, condition)
+            records.append(
+                {
+                    "condition": condition,
+                    "margins": analyze_binary_action_margins(simulate_learning(run_config)),
+                    "seed": seed,
+                }
+            )
+    priors = config.candidate_genome.brain_priors
+    assert priors is not None
+    return {
+        "binary_output_biases": list(priors[-4:]),
+        "records": records,
+        "sensitivity_config_id": config.config_id,
+    }
+
+
+def write_binary_margin_analysis(artifact_directory: Path) -> dict[str, JsonValue]:
+    """Write deterministic margin analysis beside an existing sensitivity run."""
+    config = PlasticitySensitivityConfig.from_json(
+        (artifact_directory / "sensitivity_config.json").read_text(encoding="utf-8").rstrip()
+    )
+    analysis = _binary_margin_analysis(config)
+    (artifact_directory / "margin_analysis.json").write_text(
+        json.dumps(analysis, sort_keys=True, separators=(",", ":"), allow_nan=False) + "\n",
+        encoding="utf-8",
+    )
+    return analysis
+
+
+def verify_binary_margin_analysis(artifact_directory: Path) -> dict[str, JsonValue]:
+    """Verify all child replays and recompute the stored binary margin analysis."""
+    verify_plasticity_sensitivity(artifact_directory)
+    config = PlasticitySensitivityConfig.from_json(
+        (artifact_directory / "sensitivity_config.json").read_text(encoding="utf-8").rstrip()
+    )
+    recomputed = _binary_margin_analysis(config)
+    stored: object = json.loads(
+        (artifact_directory / "margin_analysis.json").read_text(encoding="utf-8")
+    )
+    if recomputed != stored:
+        raise ValueError("binary margin analysis replay diverged")
     return recomputed
