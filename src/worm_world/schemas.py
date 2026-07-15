@@ -2,12 +2,11 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import math
 from dataclasses import dataclass, field
 from typing import cast
-
-from worm_world.experiments.config import ExperimentConfig
 
 EVENT_SCHEMA_VERSION = 1
 SNAPSHOT_SCHEMA_VERSION = 1
@@ -195,10 +194,18 @@ class ReplayManifest:
     schema_version: int = MANIFEST_SCHEMA_VERSION
 
     def __post_init__(self) -> None:
-        config = ExperimentConfig.from_json(self.config_json)
-        if config.config_id != self.config_id:
+        decoded_config: object = json.loads(self.config_json)
+        if not isinstance(decoded_config, dict):
+            raise ValueError("config_json must contain a JSON object")
+        config_values = cast(dict[str, JsonValue], decoded_config)
+        canonical_config = json.dumps(
+            config_values, sort_keys=True, separators=(",", ":"), allow_nan=False
+        )
+        if canonical_config != self.config_json:
+            raise ValueError("config_json must use canonical JSON encoding")
+        if hashlib.sha256(self.config_json.encode("utf-8")).hexdigest() != self.config_id:
             raise ValueError("config_id does not match config_json")
-        if config.seed != self.master_seed:
+        if config_values.get("seed") != self.master_seed:
             raise ValueError("master_seed does not match the serialized configuration")
         if not self.code_revision:
             raise ValueError("code_revision must be explicit")

@@ -8,13 +8,14 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from worm_world.experiments.config import ExperimentConfig
+from worm_world.experiments.sandbox_config import SandboxExperimentConfig
 from worm_world.schemas import (
     CODE_REVISION_UNAVAILABLE,
     ReplayManifest,
     SimulationEvent,
     WorldSnapshot,
 )
-from worm_world.world import NoOpWorld
+from worm_world.world import NoOpWorld, SandboxWorld
 
 
 @dataclass(frozen=True, slots=True)
@@ -135,3 +136,124 @@ def run_noop_experiment(
         events=events,
         snapshots=snapshots,
     )
+
+
+def simulate_sandbox(
+    config: SandboxExperimentConfig,
+) -> tuple[tuple[SimulationEvent, ...], tuple[WorldSnapshot, ...]]:
+    """Execute the authoritative sandbox without filesystem side effects."""
+    world = SandboxWorld(
+        config.world,
+        config.body,
+        config.physiology,
+        config.resources,
+        config.initial_organism,
+    )
+    events: list[SimulationEvent] = [
+        SimulationEvent(
+            step_index=0,
+            sequence=0,
+            event_type="run.started",
+            data={"config_id": config.config_id, "master_seed": config.seed},
+        )
+    ]
+    snapshots = [world.snapshot()]
+    sequence = 1
+    for action in config.actions:
+        result = world.advance(action)
+        events.append(
+            SimulationEvent(
+                step_index=world.step_index,
+                sequence=sequence,
+                event_type="organism.step",
+                data={"action": action.to_dict(), "outcome": result.to_dict()},
+            )
+        )
+        sequence += 1
+        if result.death_transition:
+            events.append(
+                SimulationEvent(
+                    step_index=world.step_index,
+                    sequence=sequence,
+                    event_type="organism.died",
+                    data={
+                        "age_seconds": world.organism.physiology.age_seconds,
+                        "energy": world.organism.physiology.energy,
+                        "hydration": world.organism.physiology.hydration,
+                        "injury": world.organism.physiology.injury,
+                    },
+                )
+            )
+            sequence += 1
+        snapshots.append(world.snapshot())
+    events.append(
+        SimulationEvent(
+            step_index=world.step_index,
+            sequence=sequence,
+            event_type="run.completed",
+            data={
+                "alive": world.organism.physiology.alive,
+                "final_step": world.step_index,
+            },
+        )
+    )
+    return tuple(events), tuple(snapshots)
+
+
+def run_sandbox_experiment(
+    config: SandboxExperimentConfig,
+    *,
+    artifact_directory: Path,
+    project_root: Path,
+) -> ReplayArtifacts:
+    """Run Phase 1 and write a complete replay bound to its action sequence."""
+    lockfile = project_root / "uv.lock"
+    if not lockfile.is_file():
+        raise FileNotFoundError(f"required dependency lockfile not found: {lockfile}")
+    events, snapshots = simulate_sandbox(config)
+    event_bytes = _json_lines(events)
+    snapshot_bytes = _json_lines(snapshots)
+    manifest = ReplayManifest(
+        config_id=config.config_id,
+        config_json=config.to_json(),
+        master_seed=config.seed,
+        code_revision=_code_revision(project_root),
+        dependency_lock_sha256=_sha256_file(lockfile),
+        event_hash=hashlib.sha256(event_bytes).hexdigest(),
+        event_count=len(events),
+        snapshot_count=len(snapshots),
+        final_step=len(config.actions),
+    )
+    artifact_directory.mkdir(parents=True, exist_ok=False)
+    (artifact_directory / "config.json").write_text(config.to_json() + "\n", encoding="utf-8")
+    (artifact_directory / "events.jsonl").write_bytes(event_bytes)
+    (artifact_directory / "snapshots.jsonl").write_bytes(snapshot_bytes)
+    (artifact_directory / "manifest.json").write_text(manifest.to_json() + "\n", encoding="utf-8")
+    return ReplayArtifacts(artifact_directory, manifest, events, snapshots)
+
+
+def verify_sandbox_replay(artifact_directory: Path) -> ReplayManifest:
+    """Re-simulate stored inputs and reject any event or snapshot divergence."""
+    manifest = ReplayManifest.from_json(
+        (artifact_directory / "manifest.json").read_text(encoding="utf-8")
+    )
+    config_text = (artifact_directory / "config.json").read_text(encoding="utf-8").rstrip("\n")
+    config = SandboxExperimentConfig.from_json(config_text)
+    if config.to_json() != manifest.config_json:
+        raise ValueError("stored config does not match replay manifest")
+    events, snapshots = simulate_sandbox(config)
+    event_bytes = _json_lines(events)
+    snapshot_bytes = _json_lines(snapshots)
+    if event_bytes != (artifact_directory / "events.jsonl").read_bytes():
+        raise ValueError("event replay diverged from stored bytes")
+    if snapshot_bytes != (artifact_directory / "snapshots.jsonl").read_bytes():
+        raise ValueError("snapshot replay diverged from stored bytes")
+    if hashlib.sha256(event_bytes).hexdigest() != manifest.event_hash:
+        raise ValueError("event hash does not match replay manifest")
+    if (len(events), len(snapshots), len(config.actions)) != (
+        manifest.event_count,
+        manifest.snapshot_count,
+        manifest.final_step,
+    ):
+        raise ValueError("replay counts do not match manifest")
+    return manifest

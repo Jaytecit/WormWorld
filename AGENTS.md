@@ -17,7 +17,9 @@ Read this file and [docs/DEVELOPMENT_PLAN.md](docs/DEVELOPMENT_PLAN.md) before c
 
 ## Current phase and resume protocol
 
-The project is at **Phase 0 — specification and repository bootstrap**. No simulation implementation has been started.
+The project is at **Phase 2 — persistent population and evolution**. Phase 1's deterministic
+single-organism survival sandbox is complete; consult `docs/PROJECT_STATE.md` for its retained
+acceptance evidence and the exact next ticket.
 
 At the start of every development session:
 
