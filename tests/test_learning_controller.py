@@ -88,6 +88,31 @@ def test_three_factor_update_arithmetic_and_diagnostics_use_only_internal_change
     }
 
 
+def test_action_semantic_eligibility_uses_each_channel_activation() -> None:
+    priors = ControllerPriors(
+        input_weights=((1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0),),
+        recurrent_weights=((0.0,),),
+        hidden_bias=(0.0,),
+        output_weights=((0.0,),) * 6,
+        output_bias=(0.0,) * 6,
+    )
+    parameters = PlasticityParameters(trace_decay=0.5)
+    semantic = RecurrentController(
+        ControllerConfig(hidden_size=1, eligibility_rule="action_activation"),
+        priors,
+        parameters,
+    ).step(_sensors(0.5), ControllerState.clean(1))
+    legacy = RecurrentController(ControllerConfig(hidden_size=1), priors, parameters).step(
+        _sensors(0.5), ControllerState.clean(1)
+    )
+    hidden = math.tanh(0.5)
+    assert semantic.state.eligibility_traces[0][0] == 0.0
+    assert semantic.state.eligibility_traces[1][0] == 0.0
+    assert math.isclose(semantic.state.eligibility_traces[2][0], hidden * 0.5)
+    assert semantic.state.eligibility_traces[2:] == ((hidden * 0.5,),) * 4
+    assert legacy.state.eligibility_traces == ((0.0,),) * 6
+
+
 def test_plasticity_off_is_identical_to_zero_rate_control() -> None:
     genome = Genome.version2(hidden_size=3, plasticity_rate=0.1)
     assert genome.brain_priors is not None

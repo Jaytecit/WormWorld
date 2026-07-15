@@ -1,4 +1,5 @@
 import json
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
@@ -33,6 +34,9 @@ def test_learning_suite_config_is_strict_and_seed_partitions_are_locked() -> Non
         LearningSuiteConfig((10,), (21, 22))
     with pytest.raises(ValueError, match="missing or unknown"):
         LearningSuiteConfig.from_json('{"development_seeds":[10]}')
+    semantic = replace(config, eligibility_rule="action_activation", schema_version=2)
+    assert LearningSuiteConfig.from_json(semantic.to_json()) == semantic
+    assert "eligibility_rule" not in config.to_json()
 
 
 def test_suite_reports_honest_failed_gate_and_replays_deterministically(tmp_path: Path) -> None:

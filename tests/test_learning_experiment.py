@@ -37,6 +37,14 @@ def test_learning_config_is_strict_procedural_and_matched() -> None:
     with pytest.raises(ValueError, match="missing or unknown"):
         LearningExperimentConfig.from_json('{"seed":12}')
 
+    semantic = LearningExperimentConfig.training_fixture(
+        12, plasticity_enabled=True, eligibility_rule="action_activation"
+    )
+    assert semantic.schema_version == 2
+    assert semantic.eligibility_rule == "action_activation"
+    assert LearningExperimentConfig.from_json(semantic.to_json()) == semantic
+    assert "eligibility_rule" not in enabled.to_json()
+
 
 def test_learning_diagnostics_are_ordered_complete_and_deterministic() -> None:
     config = LearningExperimentConfig.training_fixture(

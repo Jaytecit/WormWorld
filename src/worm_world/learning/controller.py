@@ -5,12 +5,14 @@ from __future__ import annotations
 import math
 from collections.abc import Mapping
 from dataclasses import dataclass
+from typing import Literal
 
 from worm_world.genetics import Genome, controller_prior_values_from_id
 from worm_world.organisms import SensorReadings, WormAction
 
 SENSOR_WIDTH = 10
 ACTION_WIDTH = 6
+type EligibilityRule = Literal["legacy_tanh", "action_activation"]
 
 
 def _finite(name: str, value: float) -> None:
@@ -29,6 +31,7 @@ class ControllerConfig:
     hidden_size: int = 8
     recurrent_enabled: bool = True
     plasticity_enabled: bool = True
+    eligibility_rule: EligibilityRule = "legacy_tanh"
     binary_threshold: float = 0.5
 
     def __post_init__(self) -> None:
@@ -37,6 +40,8 @@ class ControllerConfig:
         _finite("binary_threshold", self.binary_threshold)
         if not 0.0 <= self.binary_threshold <= 1.0:
             raise ValueError("binary_threshold must be in [0, 1]")
+        if self.eligibility_rule not in ("legacy_tanh", "action_activation"):
+            raise ValueError("unknown eligibility rule")
 
 
 @dataclass(frozen=True, slots=True)
@@ -351,9 +356,14 @@ class RecurrentController:
             ),
             reproduce=probabilities[3] >= threshold,
         )
+        post_activations = (
+            (math.tanh(raw[0]), math.tanh(raw[1]), *probabilities)
+            if self.config.eligibility_rule == "action_activation"
+            else tuple(math.tanh(value) for value in raw)
+        )
         traces = tuple(
             tuple(
-                self.plasticity.trace_decay * previous + pre * math.tanh(raw[row])
+                self.plasticity.trace_decay * previous + pre * post_activations[row]
                 for previous, pre in zip(previous_traces[row], hidden, strict=True)
             )
             for row in range(ACTION_WIDTH)

@@ -18,9 +18,11 @@ from worm_world.experiments.learning import (
 )
 from worm_world.experiments.learning_suite import LearningGateCriteria, LearningSuiteConfig
 from worm_world.genetics import Genome
+from worm_world.learning import EligibilityRule
 from worm_world.schemas import JsonValue
 
 SENSITIVITY_SCHEMA_VERSION = 1
+LATEST_SENSITIVITY_SCHEMA_VERSION = 2
 SENSITIVITY_EXPERIMENT_TYPE = "development_plasticity_sensitivity"
 
 
@@ -35,6 +37,7 @@ class PlasticitySensitivityConfig:
     step_count: int = 128
     criteria: LearningGateCriteria = LearningGateCriteria()
     experiment_type: str = SENSITIVITY_EXPERIMENT_TYPE
+    eligibility_rule: EligibilityRule = "legacy_tanh"
     schema_version: int = SENSITIVITY_SCHEMA_VERSION
 
     def __post_init__(self) -> None:
@@ -58,8 +61,16 @@ class PlasticitySensitivityConfig:
             raise ValueError("step_count must be positive")
         if self.experiment_type != SENSITIVITY_EXPERIMENT_TYPE:
             raise ValueError("unsupported sensitivity experiment type")
-        if self.schema_version != SENSITIVITY_SCHEMA_VERSION:
+        if self.schema_version not in (
+            SENSITIVITY_SCHEMA_VERSION,
+            LATEST_SENSITIVITY_SCHEMA_VERSION,
+        ):
             raise ValueError("unsupported sensitivity schema version")
+        if self.schema_version == SENSITIVITY_SCHEMA_VERSION:
+            if self.eligibility_rule != "legacy_tanh":
+                raise ValueError("version-1 sensitivity configs require the legacy rule")
+        elif self.eligibility_rule not in ("legacy_tanh", "action_activation"):
+            raise ValueError("unknown eligibility rule")
 
     @property
     def zero_rate_genome(self) -> Genome:
@@ -74,11 +85,15 @@ class PlasticitySensitivityConfig:
             founder_count=self.founder_count,
             step_count=self.step_count,
             criteria=self.criteria,
+            eligibility_rule=self.eligibility_rule,
+            schema_version=(2 if self.eligibility_rule != "legacy_tanh" else 1),
         )
 
     def to_json(self) -> str:
         values = asdict(self)
         values["candidate_genome"] = self.candidate_genome.to_dict()
+        if self.schema_version == SENSITIVITY_SCHEMA_VERSION:
+            values.pop("eligibility_rule")
         return json.dumps(values, sort_keys=True, separators=(",", ":"), allow_nan=False)
 
     @property
@@ -94,7 +109,14 @@ class PlasticitySensitivityConfig:
         sample_genome = LearningExperimentConfig.training_fixture(
             0, plasticity_enabled=True
         ).founder_genome
+        if "schema_version" not in raw:
+            raise ValueError("sensitivity configuration has missing or unknown fields")
+        version = raw.get("schema_version")
         expected = set(asdict(cls((1, 2, 3), (4, 5, 6), sample_genome)))
+        if version == SENSITIVITY_SCHEMA_VERSION:
+            expected.remove("eligibility_rule")
+        elif version != LATEST_SENSITIVITY_SCHEMA_VERSION:
+            raise ValueError("unsupported sensitivity schema version")
         if set(raw) != expected:
             raise ValueError("sensitivity configuration has missing or unknown fields")
         return cls(
@@ -105,6 +127,7 @@ class PlasticitySensitivityConfig:
             step_count=raw["step_count"],
             criteria=LearningGateCriteria(**raw["criteria"]),
             experiment_type=raw["experiment_type"],
+            eligibility_rule=raw.get("eligibility_rule", "legacy_tanh"),
             schema_version=raw["schema_version"],
         )
 
@@ -244,6 +267,8 @@ def _condition_config(
         genome, enabled = config.candidate_genome, False
     elif condition == "zero":
         genome, enabled = config.zero_rate_genome, True
+    elif condition == "legacy" and config.eligibility_rule == "action_activation":
+        genome, enabled = config.candidate_genome, True
     else:
         raise ValueError("unknown sensitivity condition")
     return LearningExperimentConfig.training_fixture(
@@ -252,7 +277,13 @@ def _condition_config(
         founder_count=config.founder_count,
         step_count=config.step_count,
         founder_genome=genome,
+        eligibility_rule=("legacy_tanh" if condition == "legacy" else config.eligibility_rule),
     )
+
+
+def _conditions(config: PlasticitySensitivityConfig) -> tuple[str, ...]:
+    base = ("on", "off", "zero")
+    return (*base, "legacy") if config.eligibility_rule == "action_activation" else base
 
 
 def _summary(
@@ -269,6 +300,7 @@ def _summary(
         on = simulations[(seed, "on")]
         off = simulations[(seed, "off")]
         zero = simulations[(seed, "zero")]
+        conditions = _conditions(config)
         on_off = compare_action_divergence(on, off)
         off_zero = compare_action_divergence(off, zero)
         off_report = off.report.to_dict()
@@ -300,7 +332,7 @@ def _summary(
                         "event_hash": identities[(seed, label)][1],
                         "report": simulations[(seed, label)].report.to_dict(),
                     }
-                    for label in ("on", "off", "zero")
+                    for label in conditions
                 },
                 "off_zero_divergence": off_zero.to_dict(),
                 "on_off_divergence": on_off.to_dict(),
@@ -309,6 +341,11 @@ def _summary(
                 "zero_control_identical": zero_identical,
             }
         )
+        if "legacy" in conditions:
+            record = cast(dict[str, JsonValue], records[-1])
+            record["on_legacy_divergence"] = compare_action_divergence(
+                on, simulations[(seed, "legacy")]
+            ).to_dict()
     criteria = config.criteria
     birth_mean = sum(birth_differences) / len(birth_differences)
     population_mean = sum(population_differences) / len(population_differences)
@@ -343,7 +380,7 @@ def run_plasticity_sensitivity(
     simulations: dict[tuple[int, str], LearningSimulation] = {}
     identities: dict[tuple[int, str], tuple[str, str]] = {}
     for seed in config.development_seeds:
-        for condition in ("on", "off", "zero"):
+        for condition in _conditions(config):
             run_config = _condition_config(config, seed, condition)
             manifest = run_learning_experiment(
                 run_config,
@@ -377,7 +414,7 @@ def verify_plasticity_sensitivity(artifact_directory: Path) -> dict[str, JsonVal
     simulations: dict[tuple[int, str], LearningSimulation] = {}
     identities: dict[tuple[int, str], tuple[str, str]] = {}
     for seed in config.development_seeds:
-        for condition in ("on", "off", "zero"):
+        for condition in _conditions(config):
             directory = artifact_directory / f"seed_{seed}_{condition}"
             manifest = verify_learning_replay(directory)
             run_config = _condition_config(config, seed, condition)
@@ -397,7 +434,7 @@ def verify_plasticity_sensitivity(artifact_directory: Path) -> dict[str, JsonVal
 def _binary_margin_analysis(config: PlasticitySensitivityConfig) -> dict[str, JsonValue]:
     records: list[JsonValue] = []
     for seed in config.development_seeds:
-        for condition in ("on", "off", "zero"):
+        for condition in _conditions(config):
             run_config = _condition_config(config, seed, condition)
             records.append(
                 {

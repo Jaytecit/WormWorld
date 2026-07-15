@@ -5,13 +5,13 @@
 - **Active phase:** Phase 3 — lifetime learning.
 - **Phase status:** Phase 2 is complete and its exit gate passed on 2026-07-15. Phase 3 is in
   progress; its scientific exit gate has not passed.
-- **Last completed ticket:** P3-T06 — development-only neutral action-margin priors. The exact
-  construction and replayable margin analysis passed engineering checks, but the candidate failed
-  its development outcome screen; Phase 3 remains open and fresh confirmation remains blocked.
+- **Last completed ticket:** P3-T07 — development-only action-semantic eligibility traces. The
+  versioned mechanism and legacy replay gate passed, and development survival improved on all three
+  seeds, but unchanged birth criteria blocked confirmation; Phase 3 remains open.
 - **Repository state:** Local Git repository on `main`. The completed Phase 2, P3-T01, viewer
   contract, and Canvas viewer build was committed as `dd23200` on 2026-07-15. P3-T02 was committed
-  as `eafab42`, P3-T03 as `2d201ed`, P3-T04 as `2a8285c`, and P3-T05 as `857ce44`; P3-T06 and this
-  handoff are uncommitted. No remote is configured and GitHub CLI is not installed.
+  through P3-T05 was committed through `857ce44`, and P3-T06 as `dbde6b8`; P3-T07 and this handoff
+  are uncommitted. No remote is configured and GitHub CLI is not installed.
 
 ## Completed viewer scope
 
@@ -35,6 +35,33 @@
   `docs/VIEWER_CONTRACT.md`, and this handoff.
 
 ## Completed Phase 3 scope
+
+**P3-T07 — development-only action-semantic eligibility traces:**
+
+- Added a versioned eligibility rule. Continuous forward/turn channels retain `tanh(raw_output)`;
+  binary eat/drink/rest/reproduce channels use their already-computed sigmoid activation. The
+  legacy all-`tanh` rule remains the schema-v1 default and an explicit ablation.
+- Added schema-v2 learning experiment, suite, and sensitivity configs that serialize the rule.
+  Schema-v1 JSON omits the new field, retains canonical IDs/bytes, and replayed every retained
+  Phase 3 artifact without divergence.
+- Extended development sensitivity runs with a matched legacy-rule condition when the v2 semantic
+  rule is active. Plasticity-off and zero-rate controls remain exactly output/action identical.
+- Retained `artifacts/phase3/development_action_eligibility_v2/` uses rate `1.0`, 384 steps, four
+  founders, seeds `101, 102, 103`, sensitivity config ID
+  `49b807b35215ac693fc87ca5739d9ef7ef5df905d8fdb886c82da410aa99196b`, and 12 verified child
+  artifacts (semantic on/off/zero plus legacy on for each seed).
+- Semantic plasticity-on produced births/deaths/final populations of `0/0/4`, `2/4/2`, and `0/0/4`.
+  Matched off/zero controls produced `0/2/2`, `2/6/0`, and `1/5/0`. Final-population advantages
+  were `2, 2, 4`, mean `2.6666666666666665`, and learning-on avoided extinction on all three seeds.
+- Birth differences were `0, 0, -1` (mean `-0.3333333333333333`), so the unchanged gate correctly
+  kept `candidate_development_passed` and `future_confirmatory_authorized` false. Seeds `301`–`305`
+  were not executed; stored future-suite ID is
+  `d52b59ba1021a69997000b34c0c8e7a88a0a0cd3b9d9220d5b50ad41df9cb1fd`.
+- Changed files for this bounded ticket: `src/worm_world/learning/controller.py`,
+  `src/worm_world/learning/__init__.py`, `src/worm_world/experiments/learning.py`,
+  `src/worm_world/experiments/learning_suite.py`,
+  `src/worm_world/experiments/learning_sensitivity.py`, the four learning test modules, the retained
+  action-eligibility artifacts, and this handoff.
 
 **P3-T06 — development-only neutral action-margin priors:**
 
@@ -266,7 +293,7 @@ python -m uv run pytest
 python -m uv run pre-commit validate-config
 ```
 
-Final expected test result: `84 passed`. Coverage includes genome validation/round trips and IDs;
+Final expected test result: `85 passed`. Coverage includes genome validation/round trips and IDs;
 pure phenotype identity/differences; seeded inheritance; compatibility; transitive ancestry;
 asexual and sexual births; reproduction conservation; fair shared-resource competition; stable
 entity/genome snapshots; exactly-once deaths; deterministic event ordering; strict config identity;
@@ -289,15 +316,18 @@ future-suite preregistration without execution, full child replay, and tamper re
 P3-T06 additions cover exact neutral-bias construction, per-channel binary logit margins, stored
 margin-analysis replay, preserved off/zero identity, and blocked confirmation after a failed
 development screen.
+P3-T07 additions cover exact mixed-activation trace arithmetic, schema-v1 canonical identity,
+schema-v2 rule round trips, matched legacy-rule ablation, semantic/off/zero lifecycle, all retained
+Phase 3 replay artifacts, and blocked confirmation under unchanged criteria.
 
 Measured local benchmarks on 2026-07-15:
 
 ```powershell
 python -m uv run python -m worm_world.benchmark --mode sandbox --steps 100000
-# 100000 steps in 1.4002331000519916 s; 71416.6805486079 steps/s
+# 100000 steps in 1.33615170000121 s; 74841.80127144953 steps/s
 
 python -m uv run python -m worm_world.benchmark --mode population --steps 1000
-# 1000 steps with 64 organisms in 2.711624399991706 s; 368.782638186564 world steps/s
+# 1000 steps with 64 organisms in 2.6609510000562295 s; 375.8054920886813 world steps/s
 ```
 
 These are local regression measurements, not portable thresholds. The Phase 1 retained replay was
@@ -346,6 +376,9 @@ also re-simulated byte-for-byte with unchanged event hash
 14. Neutral binary action priors mean a zero inherited output bias, not a prescribed action. The
     failed centered-bias candidate is retained rather than selected: it suppressed reproduction
     divergence and did not improve any population outcome.
+15. Eligibility rule `action_activation` uses each controller channel's actual activation. It does
+    not change the homeostatic neuromodulator or introduce a reward. The rule is schema-v2 and
+    independently ablatable; schema-v1 remains `legacy_tanh` for exact historical replay.
 
 ## Known blockers and limitations
 
@@ -371,6 +404,9 @@ also re-simulated byte-for-byte with unchanged event hash
 - Centering binary output biases also failed and exposed a mechanism limitation: eligibility uses
   `tanh(raw_output)` for every channel, so a binary unit at its neutral zero logit has zero
   postsynaptic eligibility even though its sigmoid decision probability is `0.5`.
+- Correcting binary eligibility produced strong development survival/final-population advantages
+  but not birth-count advantage. This creates a protocol question that must be resolved explicitly;
+  confirmation cannot proceed under the existing birth-gated criteria.
 - The Canvas viewer is replay-only: it has no live streaming, terrain height, dynamic ecology, or
   materials. Those require backward-compatible later viewer schemas. Automated direct-file visual
   QA was unavailable because the in-app browser disallows `file:` navigation; exporter fidelity,
@@ -379,17 +415,18 @@ also re-simulated byte-for-byte with unchanged event hash
 
 ## Exact next ticket
 
-**P3-T07 — development-only action-semantic eligibility traces**
+**P3-T08 — explicit survival-gate protocol amendment and preregistration**
 
-Use the controller channel's actual activation function when updating eligibility: retain
-`tanh(raw_output)` for the two continuous motor channels and use the already computed sigmoid
-probability for eat, drink, rest, and reproduce. This is a local neural-credit correction, not a
-task signal; the neuromodulator remains exclusively genome-weighted energy/hydration/injury change.
-Version the eligibility rule in experiment configuration so all retained v1 artifacts continue to
-replay byte-for-byte, and keep the old rule selectable as an ablation. Evaluate only development
-seeds `101, 102, 103` with matched plasticity-off, zero-rate, and legacy-rule controls. Require birth
-and final-population development advantage before authorizing fresh held-out seeds; otherwise record
-failure and leave `301`–`305` untouched. Test exact trace arithmetic for both rule versions, legacy
-replay identity, off/zero identity, clean lifetime reset, artifact verification, and every prior
-replay. Run formatting, lint, strict types, the full suite, pre-commit validation, and both
-benchmarks; then update this handoff.
+Add a new versioned Phase 3 gate criteria type that treats held-out viable final population and
+extinction avoidance as the primary lifetime-learning outcomes, with births and surviving
+descendants still reported but not assumed to increase within the fixed horizon. Document why this
+does not alter evolutionary selection: the simulator still selects only through actual survival and
+reproduction; the experiment merely evaluates a lifetime controller without supplying a reward.
+Using development seeds `101, 102, 103` only, require a strictly positive paired final-population
+advantage on every seed, positive deterministic confidence-interval lower bound, zero-control
+identity, and no hidden task signal before authorizing confirmation. Pre-register fresh seeds
+`301`–`305`, the 384-step horizon, the semantic eligibility rule, and frozen thresholds in a new
+suite config, but do not execute them in this ticket. Test old criteria/schema replay, new strict
+identity, honest authorization, CI arithmetic, descendant reporting, and every retained artifact.
+Run formatting, lint, strict types, the full suite, pre-commit validation, and both benchmarks; then
+update this handoff.

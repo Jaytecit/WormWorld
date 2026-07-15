@@ -20,10 +20,12 @@ from worm_world.experiments.learning import (
     verify_learning_replay,
 )
 from worm_world.genetics import Genome
+from worm_world.learning import EligibilityRule
 from worm_world.rng import NamedRandomStreams
 from worm_world.schemas import JsonValue
 
 LEARNING_SUITE_SCHEMA_VERSION = 1
+LATEST_LEARNING_SUITE_SCHEMA_VERSION = 2
 LEARNING_SUITE_TYPE = "matched_heldout_learning_evaluation"
 
 
@@ -64,6 +66,7 @@ class LearningSuiteConfig:
     confidence_level: float = 0.95
     criteria: LearningGateCriteria = field(default_factory=LearningGateCriteria)
     experiment_type: str = LEARNING_SUITE_TYPE
+    eligibility_rule: EligibilityRule = "legacy_tanh"
     schema_version: int = LEARNING_SUITE_SCHEMA_VERSION
 
     def __post_init__(self) -> None:
@@ -91,12 +94,22 @@ class LearningSuiteConfig:
             raise ValueError("learning suite requires a version-2 founder genome")
         if self.experiment_type != LEARNING_SUITE_TYPE:
             raise ValueError("unsupported learning suite type")
-        if self.schema_version != LEARNING_SUITE_SCHEMA_VERSION:
+        if self.schema_version not in (
+            LEARNING_SUITE_SCHEMA_VERSION,
+            LATEST_LEARNING_SUITE_SCHEMA_VERSION,
+        ):
             raise ValueError("unsupported learning suite schema version")
+        if self.schema_version == LEARNING_SUITE_SCHEMA_VERSION:
+            if self.eligibility_rule != "legacy_tanh":
+                raise ValueError("version-1 learning suites require the legacy eligibility rule")
+        elif self.eligibility_rule not in ("legacy_tanh", "action_activation"):
+            raise ValueError("unknown eligibility rule")
 
     def to_json(self) -> str:
         values = asdict(self)
         values["founder_genome"] = self.founder_genome.to_dict()
+        if self.schema_version == LEARNING_SUITE_SCHEMA_VERSION:
+            values.pop("eligibility_rule")
         return json.dumps(values, sort_keys=True, separators=(",", ":"), allow_nan=False)
 
     @property
@@ -109,7 +122,14 @@ class LearningSuiteConfig:
         if not isinstance(decoded, dict):
             raise ValueError("learning suite configuration must be an object")
         raw = cast(dict[str, Any], decoded)
+        if "schema_version" not in raw:
+            raise ValueError("learning suite configuration has missing or unknown fields")
+        version = raw.get("schema_version")
         expected = set(asdict(cls((1,), (2, 3, 4))))
+        if version == LEARNING_SUITE_SCHEMA_VERSION:
+            expected.remove("eligibility_rule")
+        elif version != LATEST_LEARNING_SUITE_SCHEMA_VERSION:
+            raise ValueError("unsupported learning suite schema version")
         if set(raw) != expected:
             raise ValueError("learning suite configuration has missing or unknown fields")
         return cls(
@@ -123,6 +143,7 @@ class LearningSuiteConfig:
             confidence_level=raw["confidence_level"],
             criteria=LearningGateCriteria(**raw["criteria"]),
             experiment_type=raw["experiment_type"],
+            eligibility_rule=raw.get("eligibility_rule", "legacy_tanh"),
             schema_version=raw["schema_version"],
         )
 
@@ -162,6 +183,7 @@ def _condition_config(
         founder_count=config.founder_count,
         step_count=config.step_count,
         founder_genome=config.founder_genome,
+        eligibility_rule=config.eligibility_rule,
     )
 
 

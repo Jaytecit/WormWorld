@@ -10,7 +10,7 @@ from typing import Any, Self, cast
 
 from worm_world.experiments.config import MAX_SEED, WorldConfig
 from worm_world.genetics import LATEST_GENOME_SCHEMA_VERSION, Genome
-from worm_world.learning import ControllerConfig, PopulationController
+from worm_world.learning import ControllerConfig, EligibilityRule, PopulationController
 from worm_world.rng import NamedRandomStreams
 from worm_world.schemas import JsonValue, ReplayManifest, SimulationEvent, WorldSnapshot
 from worm_world.world import (
@@ -23,6 +23,7 @@ from worm_world.world import (
 )
 
 LEARNING_CONFIG_SCHEMA_VERSION = 1
+LATEST_LEARNING_CONFIG_SCHEMA_VERSION = 2
 LEARNING_EXPERIMENT_TYPE = "lifetime_learning_diagnostics"
 TRAINING_FIXTURE_VERSION = 1
 
@@ -80,6 +81,7 @@ class LearningExperimentConfig:
     founder_genome: Genome = field(default_factory=_default_genome)
     fixture_version: int = TRAINING_FIXTURE_VERSION
     experiment_type: str = LEARNING_EXPERIMENT_TYPE
+    eligibility_rule: EligibilityRule = "legacy_tanh"
     schema_version: int = LEARNING_CONFIG_SCHEMA_VERSION
 
     def __post_init__(self) -> None:
@@ -106,8 +108,16 @@ class LearningExperimentConfig:
             raise ValueError("unsupported training fixture version")
         if self.experiment_type != LEARNING_EXPERIMENT_TYPE:
             raise ValueError("unsupported learning experiment type")
-        if self.schema_version != LEARNING_CONFIG_SCHEMA_VERSION:
+        if self.schema_version not in (
+            LEARNING_CONFIG_SCHEMA_VERSION,
+            LATEST_LEARNING_CONFIG_SCHEMA_VERSION,
+        ):
             raise ValueError("unsupported learning config schema version")
+        if self.schema_version == LEARNING_CONFIG_SCHEMA_VERSION:
+            if self.eligibility_rule != "legacy_tanh":
+                raise ValueError("version-1 learning configs require the legacy eligibility rule")
+        elif self.eligibility_rule not in ("legacy_tanh", "action_activation"):
+            raise ValueError("unknown eligibility rule")
 
     @classmethod
     def training_fixture(
@@ -118,6 +128,7 @@ class LearningExperimentConfig:
         founder_count: int = 4,
         step_count: int = 64,
         founder_genome: Genome | None = None,
+        eligibility_rule: EligibilityRule = "legacy_tanh",
     ) -> LearningExperimentConfig:
         """Create a small varied world whose realized inputs are stored in the config."""
         if isinstance(founder_count, bool) or founder_count < 1:
@@ -150,11 +161,19 @@ class LearningExperimentConfig:
             step_count=step_count,
             resources=resources,
             founder_genome=_default_genome() if founder_genome is None else founder_genome,
+            eligibility_rule=eligibility_rule,
+            schema_version=(
+                LATEST_LEARNING_CONFIG_SCHEMA_VERSION
+                if eligibility_rule != "legacy_tanh"
+                else LEARNING_CONFIG_SCHEMA_VERSION
+            ),
         )
 
     def to_json(self) -> str:
         values = asdict(self)
         values["founder_genome"] = self.founder_genome.to_dict()
+        if self.schema_version == LEARNING_CONFIG_SCHEMA_VERSION:
+            values.pop("eligibility_rule")
         return json.dumps(values, sort_keys=True, separators=(",", ":"), allow_nan=False)
 
     @property
@@ -167,7 +186,14 @@ class LearningExperimentConfig:
         if not isinstance(decoded, dict):
             raise ValueError("learning configuration must be an object")
         raw = cast(dict[str, Any], decoded)
+        if "schema_version" not in raw:
+            raise ValueError("learning configuration has missing or unknown fields")
+        version = raw.get("schema_version")
         expected = set(asdict(cls.training_fixture(0, plasticity_enabled=True)))
+        if version == LEARNING_CONFIG_SCHEMA_VERSION:
+            expected.remove("eligibility_rule")
+        elif version != LATEST_LEARNING_CONFIG_SCHEMA_VERSION:
+            raise ValueError("unsupported learning config schema version")
         if set(raw) != expected:
             raise ValueError("learning configuration has missing or unknown fields")
         reproduction = dict(raw["reproduction"])
@@ -189,6 +215,7 @@ class LearningExperimentConfig:
             founder_genome=Genome.from_json(json.dumps(raw["founder_genome"])),
             fixture_version=raw["fixture_version"],
             experiment_type=raw["experiment_type"],
+            eligibility_rule=raw.get("eligibility_rule", "legacy_tanh"),
             schema_version=raw["schema_version"],
         )
 
@@ -258,7 +285,11 @@ def simulate_learning(config: LearningExperimentConfig) -> LearningSimulation:
         founders=_founders(config),
     )
     controller = PopulationController(
-        ControllerConfig(hidden_size=hidden_size, plasticity_enabled=config.plasticity_enabled)
+        ControllerConfig(
+            hidden_size=hidden_size,
+            plasticity_enabled=config.plasticity_enabled,
+            eligibility_rule=config.eligibility_rule,
+        )
     )
     events: list[SimulationEvent] = [
         SimulationEvent(

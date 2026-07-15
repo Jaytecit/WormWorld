@@ -39,6 +39,10 @@ def test_sensitivity_config_is_strict_and_preregisters_without_running() -> None
         replace(config, future_heldout_seeds=(103, 301, 302))
     with pytest.raises(ValueError, match="missing or unknown"):
         PlasticitySensitivityConfig.from_json('{"development_seeds":[101,102,103]}')
+    semantic = replace(config, eligibility_rule="action_activation", schema_version=2)
+    assert PlasticitySensitivityConfig.from_json(semantic.to_json()) == semantic
+    assert semantic.future_suite.eligibility_rule == "action_activation"
+    assert semantic.future_suite.schema_version == 2
 
 
 def test_action_divergence_is_causal_and_zero_rate_matches_off() -> None:
