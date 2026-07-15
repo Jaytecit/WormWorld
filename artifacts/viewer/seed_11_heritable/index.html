@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>The Worm World — Population Replay</title>
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body>
+    <main>
+      <header>
+        <div>
+          <p class="eyebrow">RECORDED POPULATION</p>
+          <h1>The Worm World</h1>
+        </div>
+        <div class="readout" aria-live="polite">
+          <span id="step">STEP —</span>
+          <span id="time">0.00 s</span>
+          <span id="population">0 ACTIVE</span>
+        </div>
+      </header>
+
+      <section class="stage-shell">
+        <canvas id="world" aria-label="Population replay world"></canvas>
+        <div class="legend" aria-hidden="true">
+          <span><i class="food"></i>Food</span>
+          <span><i class="water"></i>Water</span>
+          <span><i class="worm"></i>Organism</span>
+        </div>
+        <aside id="inspector" class="inspector empty">
+          <p class="eyebrow">INSPECTOR</p>
+          <h2>Select a worm</h2>
+          <p>Click a body in the replay to inspect its recorded identity and physiology.</p>
+        </aside>
+      </section>
+
+      <section class="transport" aria-label="Replay controls">
+        <button id="play" type="button" aria-label="Play replay">▶</button>
+        <input id="timeline" type="range" min="0" max="0" value="0" aria-label="Replay frame">
+        <label><input id="tombstones" type="checkbox"> Show tombstones</label>
+        <label>Speed
+          <select id="speed">
+            <option value="0.5">0.5×</option>
+            <option value="1" selected>1×</option>
+            <option value="2">2×</option>
+            <option value="4">4×</option>
+          </select>
+        </label>
+      </section>
+
+      <footer>
+        <span id="config-id">CONFIG —</span>
+        <span>Read-only replay · Canvas 2D</span>
+      </footer>
+    </main>
+    <script src="replay-data.js"></script>
+    <script src="app.js"></script>
+  </body>
+</html>

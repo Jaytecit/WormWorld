@@ -17,9 +17,9 @@ Read this file and [docs/DEVELOPMENT_PLAN.md](docs/DEVELOPMENT_PLAN.md) before c
 
 ## Current phase and resume protocol
 
-The project is at **Phase 2 — persistent population and evolution**. Phase 1's deterministic
-single-organism survival sandbox is complete; consult `docs/PROJECT_STATE.md` for its retained
-acceptance evidence and the exact next ticket.
+The project is at **Phase 3 — lifetime learning**. Phase 2's deterministic persistent-population
+and evolution gate is complete; consult `docs/PROJECT_STATE.md` for its retained acceptance
+evidence and the exact next ticket.
 
 At the start of every development session:
 

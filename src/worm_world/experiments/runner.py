@@ -73,6 +73,11 @@ def _code_revision(project_root: Path) -> str:
     return f"{revision}+dirty" if dirty else revision
 
 
+def code_revision(project_root: Path) -> str:
+    """Return the recorded revision identity for another artifact runner."""
+    return _code_revision(project_root)
+
+
 def _json_lines(records: tuple[SimulationEvent, ...] | tuple[WorldSnapshot, ...]) -> bytes:
     """Encode canonical records with a terminal newline for stable file hashing."""
     return ("".join(f"{record.to_json()}\n" for record in records)).encode("utf-8")

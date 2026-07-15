@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import math
+from collections.abc import Mapping
 from dataclasses import asdict, dataclass
 from typing import Any, Self
 
@@ -11,12 +12,13 @@ from worm_world.organisms import (
     BodyConfig,
     PhysiologyConfig,
     PhysiologyState,
+    PopulationStore,
     SensorReadings,
     WormAction,
     WormState,
     apply_physiology,
 )
-from worm_world.schemas import JsonValue, WorldSnapshot
+from worm_world.schemas import JsonValue, SimulationEvent, WorldSnapshot
 
 
 def _finite_non_negative(name: str, value: float) -> None:
@@ -109,6 +111,22 @@ class StepResult:
         }
 
 
+@dataclass(frozen=True, slots=True)
+class EntityStepResult:
+    """One ID-associated outcome from a simultaneous population step."""
+
+    entity_id: int
+    outcome: StepResult
+
+
+@dataclass(frozen=True, slots=True)
+class PopulationStepResult:
+    """Stable outcomes and lifecycle events from one population transition."""
+
+    outcomes: tuple[EntityStepResult, ...]
+    events: tuple[SimulationEvent, ...]
+
+
 class SandboxWorld:
     """Headless 2.5D sandbox with one worm and two finite resource patches."""
 
@@ -150,7 +168,19 @@ class SandboxWorld:
         self.body_config = body_config
         self.physiology_config = physiology_config
         self.resource_config = resource_config
-        self.organism = WormState(
+        self.population = PopulationStore()
+        self._primary_entity_id = self.population.insert(self._state_from_initial(initial))
+        self.food_energy = resource_config.food_energy
+        self.water_amount = resource_config.water_amount
+        self.energy_dissipated = 0.0
+        self.hydration_dissipated = 0.0
+        self._step_index = 0
+        self._boundary_contacts = {self._primary_entity_id: False}
+        self._event_sequence = 0
+
+    @staticmethod
+    def _state_from_initial(initial: InitialOrganismConfig) -> WormState:
+        return WormState(
             x=initial.x,
             y=initial.y,
             heading_radians=initial.heading_radians,
@@ -161,12 +191,15 @@ class SandboxWorld:
                 alive=True,
             ),
         )
-        self.food_energy = resource_config.food_energy
-        self.water_amount = resource_config.water_amount
-        self.energy_dissipated = 0.0
-        self.hydration_dissipated = 0.0
-        self._step_index = 0
-        self._boundary_contact = False
+
+    @property
+    def organism(self) -> WormState:
+        """Phase 1 adapter exposing the retained primary organism state."""
+        return self.population.state(self._primary_entity_id)
+
+    @property
+    def primary_entity_id(self) -> int:
+        return self._primary_entity_id
 
     @property
     def step_index(self) -> int:
@@ -180,9 +213,27 @@ class SandboxWorld:
     def _distance(x1: float, y1: float, x2: float, y2: float) -> float:
         return math.hypot(x2 - x1, y2 - y1)
 
-    def _resource_signal(self, x: float, y: float, amount: float) -> tuple[float, float, float]:
-        dx = x - self.organism.x
-        dy = y - self.organism.y
+    def add_organism(self, initial: InitialOrganismConfig) -> int:
+        """Insert another independently identified live organism."""
+        if not 0.0 <= initial.x <= self.world_config.width_meters:
+            raise ValueError("initial x must be inside the world")
+        if not 0.0 <= initial.y <= self.world_config.height_meters:
+            raise ValueError("initial y must be inside the world")
+        if not 0.0 < initial.energy <= self.physiology_config.max_energy:
+            raise ValueError("initial energy must be positive and within physiological capacity")
+        if not 0.0 < initial.hydration <= self.physiology_config.max_hydration:
+            raise ValueError("initial hydration must be positive and within physiological capacity")
+        if not 0.0 <= initial.injury < self.physiology_config.max_injury:
+            raise ValueError("initial injury must be below physiological capacity")
+        entity_id = self.population.insert(self._state_from_initial(initial))
+        self._boundary_contacts[entity_id] = False
+        return entity_id
+
+    def _resource_signal(
+        self, organism: WormState, x: float, y: float, amount: float
+    ) -> tuple[float, float, float]:
+        dx = x - organism.x
+        dy = y - organism.y
         distance = math.hypot(dx, dy)
         if amount <= 0.0 or distance > self.resource_config.sensor_range:
             return (0.0, 0.0, 0.0)
@@ -194,15 +245,23 @@ class SandboxWorld:
             1.0 - distance / self.resource_config.sensor_range,
         )
 
-    def sense(self) -> SensorReadings:
+    def sense(self, entity_id: int | None = None) -> SensorReadings:
         """Read signals without mutating the authoritative world."""
+        entity_id = self._primary_entity_id if entity_id is None else entity_id
+        organism = self.population.state(entity_id)
         food_dx, food_dy, food_intensity = self._resource_signal(
-            self.resource_config.food_x, self.resource_config.food_y, self.food_energy
+            organism,
+            self.resource_config.food_x,
+            self.resource_config.food_y,
+            self.food_energy,
         )
         water_dx, water_dy, water_intensity = self._resource_signal(
-            self.resource_config.water_x, self.resource_config.water_y, self.water_amount
+            organism,
+            self.resource_config.water_x,
+            self.resource_config.water_y,
+            self.water_amount,
         )
-        physiology = self.organism.physiology
+        physiology = organism.physiology
         return SensorReadings(
             energy_fraction=physiology.energy / self.physiology_config.max_energy,
             hydration_fraction=physiology.hydration / self.physiology_config.max_hydration,
@@ -213,31 +272,28 @@ class SandboxWorld:
             water_dx=water_dx,
             water_dy=water_dy,
             water_intensity=water_intensity,
-            boundary_contact=self._boundary_contact,
+            boundary_contact=self._boundary_contacts[entity_id],
         )
 
-    def advance(self, action: WormAction) -> StepResult:
-        """Apply one simultaneous action and one metabolism transition."""
-        physiology = self.organism.physiology
-        if not physiology.alive:
-            self._step_index += 1
-            return StepResult(0.0, 0.0, 0.0, 0.0, 0.0, False, self.sense())
-
+    def _advance_entity(self, entity_id: int, action: WormAction) -> StepResult:
+        """Apply one action without advancing authoritative world time."""
+        organism = self.population.state(entity_id)
+        physiology = organism.physiology
         dt = self.world_config.timestep_seconds
         forward = 0.0 if action.rest else action.forward
         turn = 0.0 if action.rest else action.turn
-        self.organism.heading_radians += turn * self.body_config.max_turn_rate * dt
-        self.organism.heading_radians = math.atan2(
-            math.sin(self.organism.heading_radians), math.cos(self.organism.heading_radians)
+        organism.heading_radians += turn * self.body_config.max_turn_rate * dt
+        organism.heading_radians = math.atan2(
+            math.sin(organism.heading_radians), math.cos(organism.heading_radians)
         )
         intended_distance = forward * self.body_config.max_speed * dt
-        old_x, old_y = self.organism.x, self.organism.y
-        intended_x = old_x + math.cos(self.organism.heading_radians) * intended_distance
-        intended_y = old_y + math.sin(self.organism.heading_radians) * intended_distance
-        self.organism.x = min(self.world_config.width_meters, max(0.0, intended_x))
-        self.organism.y = min(self.world_config.height_meters, max(0.0, intended_y))
-        self._boundary_contact = self.organism.x != intended_x or self.organism.y != intended_y
-        distance_moved = self._distance(old_x, old_y, self.organism.x, self.organism.y)
+        old_x, old_y = organism.x, organism.y
+        intended_x = old_x + math.cos(organism.heading_radians) * intended_distance
+        intended_y = old_y + math.sin(organism.heading_radians) * intended_distance
+        organism.x = min(self.world_config.width_meters, max(0.0, intended_x))
+        organism.y = min(self.world_config.height_meters, max(0.0, intended_y))
+        self._boundary_contacts[entity_id] = organism.x != intended_x or organism.y != intended_y
+        distance_moved = self._distance(old_x, old_y, organism.x, organism.y)
 
         food_removed = 0.0
         energy_gain = 0.0
@@ -245,8 +301,8 @@ class SandboxWorld:
         if (
             action.eat
             and self._distance(
-                self.organism.x,
-                self.organism.y,
+                organism.x,
+                organism.y,
                 self.resource_config.food_x,
                 self.resource_config.food_y,
             )
@@ -267,8 +323,8 @@ class SandboxWorld:
         if (
             action.drink
             and self._distance(
-                self.organism.x,
-                self.organism.y,
+                organism.x,
+                organism.y,
                 self.resource_config.water_x,
                 self.resource_config.water_y,
             )
@@ -291,8 +347,8 @@ class SandboxWorld:
         )
         self.energy_dissipated += delta.energy_dissipated
         self.hydration_dissipated += delta.hydration_dissipated
-        self._step_index += 1
-        physiology.age_seconds = self.elapsed_seconds
+        physiology.age_seconds = (self._step_index + 1) * dt
+        self.population.update(entity_id, organism)
         return StepResult(
             distance_moved=distance_moved,
             food_removed=food_removed,
@@ -300,8 +356,68 @@ class SandboxWorld:
             energy_dissipated=delta.energy_dissipated,
             hydration_dissipated=delta.hydration_dissipated,
             death_transition=delta.death_transition,
-            sensors=self.sense(),
+            sensors=self.sense(entity_id),
         )
+
+    def advance_population(self, actions: Mapping[int, WormAction]) -> PopulationStepResult:
+        """Advance every active entity once using actions looked up by stable ID."""
+        active_ids = self.population.active_entity_ids()
+        if set(actions) != set(active_ids):
+            raise ValueError("actions must contain exactly the active entity IDs")
+        outcomes: list[EntityStepResult] = []
+        deaths: list[tuple[int, StepResult]] = []
+        for entity_id in active_ids:
+            outcome = self._advance_entity(entity_id, actions[entity_id])
+            outcomes.append(EntityStepResult(entity_id, outcome))
+            if outcome.death_transition:
+                deaths.append((entity_id, outcome))
+
+        self._step_index += 1
+        events: list[SimulationEvent] = []
+        for entity_result in outcomes:
+            events.append(
+                SimulationEvent(
+                    step_index=self._step_index,
+                    sequence=self._event_sequence,
+                    event_type="organism.step",
+                    data={
+                        "action": actions[entity_result.entity_id].to_dict(),
+                        "entity_id": entity_result.entity_id,
+                        "outcome": entity_result.outcome.to_dict(),
+                    },
+                )
+            )
+            self._event_sequence += 1
+        for entity_id, _ in deaths:
+            state = self.population.state(entity_id)
+            if self.population.tombstone(entity_id):
+                events.append(
+                    SimulationEvent(
+                        step_index=self._step_index,
+                        sequence=self._event_sequence,
+                        event_type="organism.died",
+                        data={
+                            "age_seconds": state.physiology.age_seconds,
+                            "energy": state.physiology.energy,
+                            "entity_id": entity_id,
+                            "hydration": state.physiology.hydration,
+                            "injury": state.physiology.injury,
+                        },
+                    )
+                )
+                self._event_sequence += 1
+        return PopulationStepResult(tuple(outcomes), tuple(events))
+
+    def advance(self, action: WormAction) -> StepResult:
+        """Apply the retained Phase 1 single-organism adapter transition."""
+        if not self.population.is_active(self._primary_entity_id):
+            self._step_index += 1
+            return StepResult(0.0, 0.0, 0.0, 0.0, 0.0, False, self.sense())
+        result = self._advance_entity(self._primary_entity_id, action)
+        self._step_index += 1
+        if result.death_transition:
+            self.population.tombstone(self._primary_entity_id)
+        return result
 
     def state_dict(self) -> dict[str, JsonValue]:
         """Return the complete authoritative state in canonical-schema values."""
@@ -340,9 +456,61 @@ class SandboxWorld:
             "sensors": self.sense().to_dict(),
         }
 
+    def population_state_dict(self) -> dict[str, JsonValue]:
+        """Return all allocated entities in stable ID order for Phase 2 replay."""
+        organisms: list[JsonValue] = []
+        for entity_id in self.population.entity_ids():
+            organism = self.population.state(entity_id)
+            physiology = organism.physiology
+            organisms.append(
+                {
+                    "active": self.population.is_active(entity_id),
+                    "age_seconds": physiology.age_seconds,
+                    "alive": physiology.alive,
+                    "energy": physiology.energy,
+                    "entity_id": entity_id,
+                    "heading_radians": organism.heading_radians,
+                    "hydration": physiology.hydration,
+                    "injury": physiology.injury,
+                    "segments": [
+                        {"x": x, "y": y} for x, y in organism.segment_positions(self.body_config)
+                    ],
+                    "sensors": self.sense(entity_id).to_dict(),
+                    "x": organism.x,
+                    "y": organism.y,
+                }
+            )
+        return {
+            "accounting": {
+                "energy_dissipated": self.energy_dissipated,
+                "hydration_dissipated": self.hydration_dissipated,
+            },
+            "population": organisms,
+            "resources": {
+                "food": {
+                    "amount": self.food_energy,
+                    "x": self.resource_config.food_x,
+                    "y": self.resource_config.food_y,
+                },
+                "water": {
+                    "amount": self.water_amount,
+                    "x": self.resource_config.water_x,
+                    "y": self.resource_config.water_y,
+                },
+            },
+        }
+
     def snapshot(self) -> WorldSnapshot:
         return WorldSnapshot(
             step_index=self.step_index,
             elapsed_seconds=self.elapsed_seconds,
             state=self.state_dict(),
+        )
+
+    def population_snapshot(self) -> WorldSnapshot:
+        """Capture the Phase 2 population view without changing Phase 1 bytes."""
+        return WorldSnapshot(
+            step_index=self.step_index,
+            elapsed_seconds=self.elapsed_seconds,
+            state=self.population_state_dict(),
         )

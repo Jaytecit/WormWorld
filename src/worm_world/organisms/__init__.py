@@ -10,12 +10,14 @@ from worm_world.organisms.core import (
     WormState,
     apply_physiology,
 )
+from worm_world.organisms.population import PopulationStore
 
 __all__ = [
     "BodyConfig",
     "PhysiologyConfig",
     "PhysiologyDelta",
     "PhysiologyState",
+    "PopulationStore",
     "SensorReadings",
     "WormAction",
     "WormState",

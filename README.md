@@ -1,9 +1,10 @@
 # The Worm World
 
-The Worm World is a deterministic, headless artificial-life research simulator. Phase 1
-provides a single-organism survival sandbox with a segmented worm body, energy, hydration,
-injury, finite food and water, weak sensors, movement, eating, drinking, resting, death, and
-byte-verifiable replay. It contains no task rewards, learning, reproduction, or species rules.
+The Worm World is a deterministic, headless artificial-life research simulator. Phase 2 adds a
+persistent population, immutable genomes, mutation/recombination, compatibility, sexual and
+asexual reproduction, lineage storage, fair spatial resource competition, diversity reports,
+and byte-verifiable multi-seed evolution experiments. It contains no task rewards, learning,
+hard-coded fitness score, or species rules.
 
 ## Requirements
 
@@ -51,11 +52,37 @@ organism parameters, seed, code revision, `uv.lock` digest, schema versions, and
 
 The Phase 0 runner remains available with `--mode noop`.
 
+## Create a deterministic evolution replay
+
+```powershell
+uv run python -m worm_world.cli --mode evolution --seed 11 --steps 500 `
+  --output artifacts/phase2/example
+```
+
+The fixed action protocol exposes the same raw resting, eating, drinking, and reproduction
+channels to every organism. Selection remains actual survival and descendants. Add
+`--disable-heritability` for the matched randomized-offspring control. Evolution runs add a
+canonical `report.json` with descendant and genotype-diversity measures.
+
 ## Run the fixed-step benchmark
 
 ```powershell
 uv run python -m worm_world.benchmark --mode sandbox --steps 100000
+uv run python -m worm_world.benchmark --mode population --steps 1000
 ```
 
 The JSON result reports elapsed time and fixed steps per second. It is a local regression
 measurement, not a cross-machine performance guarantee.
+
+## View a recorded population
+
+Export any population artifact to a self-contained, read-only Canvas viewer:
+
+```powershell
+uv run python -m worm_world.viewer --replay artifacts/phase2/example `
+  --output artifacts/viewer/example
+```
+
+Open the emitted `index.html` directly in a browser. Playback, frame scrubbing, organism
+inspection, physiology readouts, resource fields, and optional tombstones all operate on embedded
+`PopulationReplay` frames; the viewer cannot construct or advance the simulator.
