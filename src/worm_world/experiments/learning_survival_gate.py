@@ -6,7 +6,7 @@ import hashlib
 import json
 import math
 import random
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, replace
 from pathlib import Path
 from typing import Any, Self, cast
 
@@ -14,10 +14,13 @@ from worm_world.experiments.config import MAX_SEED
 from worm_world.experiments.learning import (
     LearningExperimentConfig,
     LearningSimulation,
+    run_learning_experiment,
     simulate_learning,
+    verify_learning_replay,
 )
 from worm_world.experiments.learning_sensitivity import (
     PlasticitySensitivityConfig,
+    compare_action_divergence,
     verify_plasticity_sensitivity,
 )
 from worm_world.genetics import Genome
@@ -333,4 +336,205 @@ def verify_survival_gate_preregistration(
     )
     if recomputed != stored:
         raise ValueError("survival gate authorization replay diverged")
+    return recomputed
+
+
+def _confirmation_condition_config(
+    config: SurvivalGateConfig, seed: int, condition: str
+) -> LearningExperimentConfig:
+    if condition == "on":
+        genome, enabled, rule = config.founder_genome, True, "action_activation"
+    elif condition == "off":
+        genome, enabled, rule = config.founder_genome, False, "action_activation"
+    elif condition == "zero":
+        genome = replace(config.founder_genome, plasticity_rate=0.0)
+        enabled, rule = True, "action_activation"
+    elif condition == "legacy":
+        genome, enabled, rule = config.founder_genome, True, "legacy_tanh"
+    else:
+        raise ValueError("unknown survival confirmation condition")
+    return LearningExperimentConfig.training_fixture(
+        seed,
+        plasticity_enabled=enabled,
+        founder_count=config.founder_count,
+        step_count=config.step_count,
+        founder_genome=genome,
+        eligibility_rule=rule,
+    )
+
+
+def _reports_match_except_flag(first: LearningSimulation, second: LearningSimulation) -> bool:
+    left = first.report.to_dict()
+    right = second.report.to_dict()
+    left.pop("plasticity_enabled")
+    right.pop("plasticity_enabled")
+    return left == right
+
+
+def _confirmation_summary(
+    config: SurvivalGateConfig,
+    simulations: dict[tuple[int, str], LearningSimulation],
+    identities: dict[tuple[int, str], tuple[str, str]],
+) -> dict[str, JsonValue]:
+    records: list[JsonValue] = []
+    population_differences: list[float] = []
+    energy_differences: list[float] = []
+    wins = learning_extinctions = control_extinctions = 0
+    zero_controls_identical = True
+    for seed in config.heldout_seeds:
+        on = simulations[(seed, "on")]
+        off = simulations[(seed, "off")]
+        zero = simulations[(seed, "zero")]
+        legacy = simulations[(seed, "legacy")]
+        on_outcomes = _outcomes(_confirmation_condition_config(config, seed, "on"), on)
+        off_outcomes = _outcomes(_confirmation_condition_config(config, seed, "off"), off)
+        zero_outcomes = _outcomes(_confirmation_condition_config(config, seed, "zero"), zero)
+        legacy_outcomes = _outcomes(_confirmation_condition_config(config, seed, "legacy"), legacy)
+        off_zero = compare_action_divergence(off, zero)
+        zero_identical = (
+            off_zero.maximum_output_delta == 0.0
+            and off_zero.continuous_motion_divergences == 0
+            and off_zero.eat_divergences == 0
+            and off_zero.drink_divergences == 0
+            and off_zero.rest_divergences == 0
+            and off_zero.reproduce_divergences == 0
+            and _reports_match_except_flag(off, zero)
+        )
+        zero_controls_identical &= zero_identical
+        population_difference = cast(int, on_outcomes["final_population"]) - cast(
+            int, off_outcomes["final_population"]
+        )
+        energy_difference = cast(float, on_outcomes["mean_energy_fraction"]) - cast(
+            float, off_outcomes["mean_energy_fraction"]
+        )
+        population_differences.append(float(population_difference))
+        energy_differences.append(energy_difference)
+        wins += population_difference > 0
+        learning_extinctions += on_outcomes["extinct"] is True
+        control_extinctions += off_outcomes["extinct"] is True
+        records.append(
+            {
+                "conditions": {
+                    condition: {
+                        "config_id": identities[(seed, condition)][0],
+                        "event_hash": identities[(seed, condition)][1],
+                        "outcomes": outcomes,
+                    }
+                    for condition, outcomes in (
+                        ("on", on_outcomes),
+                        ("off", off_outcomes),
+                        ("zero", zero_outcomes),
+                        ("legacy", legacy_outcomes),
+                    )
+                },
+                "off_zero_identical": zero_identical,
+                "population_difference": population_difference,
+                "seed": seed,
+            }
+        )
+    streams = NamedRandomStreams(config.bootstrap_seed)
+    population = _bootstrap(
+        population_differences,
+        streams.stream("phase3-survival-population"),
+        config.bootstrap_samples,
+        config.confidence_level,
+    )
+    energy = _bootstrap(
+        energy_differences,
+        streams.stream("phase3-survival-energy"),
+        config.bootstrap_samples,
+        config.confidence_level,
+    )
+    count = len(config.heldout_seeds)
+    win_fraction = wins / count
+    learning_extinction_fraction = learning_extinctions / count
+    control_extinction_fraction = control_extinctions / count
+    criteria = config.criteria
+    passed = (
+        zero_controls_identical
+        and cast(float, population["mean"]) > criteria.minimum_population_mean_advantage
+        and cast(float, population["ci_lower"]) > criteria.minimum_population_ci_lower
+        and cast(float, energy["ci_lower"]) >= criteria.minimum_energy_ci_lower
+        and win_fraction >= criteria.minimum_seed_win_fraction
+        and learning_extinction_fraction <= criteria.maximum_learning_extinction_fraction
+        and control_extinction_fraction >= criteria.minimum_control_extinction_fraction
+    )
+    return {
+        "acceptance_passed": passed,
+        "control_extinction_fraction": control_extinction_fraction,
+        "criteria": cast(dict[str, JsonValue], asdict(criteria)),
+        "energy_statistics": energy,
+        "learning_extinction_fraction": learning_extinction_fraction,
+        "population_statistics": population,
+        "records": records,
+        "survival_gate_config_id": config.config_id,
+        "win_fraction": win_fraction,
+        "zero_controls_identical": zero_controls_identical,
+    }
+
+
+def run_survival_confirmation(
+    config: SurvivalGateConfig,
+    *,
+    artifact_directory: Path,
+    preregistration_directory: Path,
+    development_evidence_directory: Path,
+    project_root: Path,
+) -> dict[str, JsonValue]:
+    preregistered = SurvivalGateConfig.from_json(
+        (preregistration_directory / "survival_gate_config.json")
+        .read_text(encoding="utf-8")
+        .rstrip()
+    )
+    if config != preregistered:
+        raise ValueError("confirmation config differs from preregistration")
+    authorization = verify_survival_gate_preregistration(
+        preregistration_directory,
+        development_evidence_directory=development_evidence_directory,
+    )
+    if authorization.get("confirmation_authorized") is not True:
+        raise ValueError("confirmation is not authorized")
+    artifact_directory.mkdir(parents=True, exist_ok=False)
+    simulations: dict[tuple[int, str], LearningSimulation] = {}
+    identities: dict[tuple[int, str], tuple[str, str]] = {}
+    for seed in config.heldout_seeds:
+        for condition in ("on", "off", "zero", "legacy"):
+            run_config = _confirmation_condition_config(config, seed, condition)
+            manifest = run_learning_experiment(
+                run_config,
+                artifact_directory=artifact_directory / f"seed_{seed}_{condition}",
+                project_root=project_root,
+            )
+            simulations[(seed, condition)] = simulate_learning(run_config)
+            identities[(seed, condition)] = (manifest.config_id, manifest.event_hash)
+    summary = _confirmation_summary(config, simulations, identities)
+    (artifact_directory / "survival_gate_config.json").write_text(
+        config.to_json() + "\n", encoding="utf-8"
+    )
+    (artifact_directory / "summary.json").write_text(
+        json.dumps(summary, sort_keys=True, separators=(",", ":"), allow_nan=False) + "\n",
+        encoding="utf-8",
+    )
+    return summary
+
+
+def verify_survival_confirmation(artifact_directory: Path) -> dict[str, JsonValue]:
+    config = SurvivalGateConfig.from_json(
+        (artifact_directory / "survival_gate_config.json").read_text(encoding="utf-8").rstrip()
+    )
+    simulations: dict[tuple[int, str], LearningSimulation] = {}
+    identities: dict[tuple[int, str], tuple[str, str]] = {}
+    for seed in config.heldout_seeds:
+        for condition in ("on", "off", "zero", "legacy"):
+            directory = artifact_directory / f"seed_{seed}_{condition}"
+            manifest = verify_learning_replay(directory)
+            run_config = _confirmation_condition_config(config, seed, condition)
+            if manifest.config_id != run_config.config_id:
+                raise ValueError("confirmation child config diverged")
+            simulations[(seed, condition)] = simulate_learning(run_config)
+            identities[(seed, condition)] = (manifest.config_id, manifest.event_hash)
+    recomputed = _confirmation_summary(config, simulations, identities)
+    stored: object = json.loads((artifact_directory / "summary.json").read_text(encoding="utf-8"))
+    if recomputed != stored:
+        raise ValueError("survival confirmation replay diverged")
     return recomputed

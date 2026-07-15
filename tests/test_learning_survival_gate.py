@@ -7,7 +7,10 @@ from worm_world.experiments import (
     LearningExperimentConfig,
     PlasticitySensitivityConfig,
     SurvivalGateConfig,
+    SurvivalGateCriteria,
     run_plasticity_sensitivity,
+    run_survival_confirmation,
+    verify_survival_confirmation,
     verify_survival_gate_preregistration,
     write_survival_gate_preregistration,
 )
@@ -77,3 +80,45 @@ def test_survival_preregistration_reports_descendants_and_replays(tmp_path: Path
         verify_survival_gate_preregistration(
             preregistration, development_evidence_directory=evidence
         )
+
+
+def test_authorized_confirmation_replays_all_controls(tmp_path: Path) -> None:
+    sensitivity = _sensitivity()
+    permissive = SurvivalGateCriteria(
+        minimum_population_mean_advantage=-1.0,
+        minimum_population_ci_lower=-1.0,
+        minimum_energy_ci_lower=-1.0,
+        minimum_seed_win_fraction=0.0,
+        maximum_learning_extinction_fraction=1.0,
+        minimum_control_extinction_fraction=0.0,
+    )
+    gate = replace(_gate(sensitivity), criteria=permissive)
+    evidence = tmp_path / "evidence"
+    run_plasticity_sensitivity(sensitivity, artifact_directory=evidence, project_root=PROJECT_ROOT)
+    preregistration = tmp_path / "preregistration"
+    authorization = write_survival_gate_preregistration(
+        gate,
+        artifact_directory=preregistration,
+        development_evidence_directory=evidence,
+    )
+    assert authorization["confirmation_authorized"] is True
+    confirmation = tmp_path / "confirmation"
+    summary = run_survival_confirmation(
+        gate,
+        artifact_directory=confirmation,
+        preregistration_directory=preregistration,
+        development_evidence_directory=evidence,
+        project_root=PROJECT_ROOT,
+    )
+    assert summary == verify_survival_confirmation(confirmation)
+    assert summary["acceptance_passed"] is True
+    assert summary["zero_controls_identical"] is True
+    assert all(
+        (confirmation / f"seed_{seed}_{condition}" / "manifest.json").is_file()
+        for seed in gate.heldout_seeds
+        for condition in ("on", "off", "zero", "legacy")
+    )
+    path = confirmation / "summary.json"
+    path.write_text("{}\n", encoding="utf-8")
+    with pytest.raises(ValueError, match="confirmation replay diverged"):
+        verify_survival_confirmation(confirmation)

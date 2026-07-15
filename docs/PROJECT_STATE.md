@@ -5,12 +5,12 @@
 - **Active phase:** Phase 3 — lifetime learning.
 - **Phase status:** Phase 2 is complete and its exit gate passed on 2026-07-15. Phase 3 is in
   progress; its scientific exit gate has not passed.
-- **Last completed ticket:** P3-T08 — explicit survival-gate protocol amendment and preregistration.
-  The new gate is authorized from development evidence and fresh confirmation inputs are frozen,
-  but no fresh held-out run has executed; Phase 3 remains open.
+- **Last completed ticket:** P3-T09 — frozen survival confirmation suite. All engineering/replay
+  checks passed, but the predeclared scientific gate failed on one of five seeds; Phase 3 remains
+  open and no Phase 4 work is authorized.
 - **Repository state:** Local Git repository on `main`. The completed Phase 2, P3-T01, viewer
   contract, and Canvas viewer build was committed as `dd23200` on 2026-07-15. P3-T02 was committed
-  through P3-T06 was committed through `dbde6b8`, and P3-T07 as `c5975ad`; P3-T08 and this handoff
+  through P3-T07 was committed through `c5975ad`, and P3-T08 as `362c8cf`; P3-T09 and this handoff
   are uncommitted. No remote is configured and GitHub CLI is not installed.
 
 ## Completed viewer scope
@@ -35,6 +35,30 @@
   `docs/VIEWER_CONTRACT.md`, and this handoff.
 
 ## Completed Phase 3 scope
+
+**P3-T09 — frozen survival confirmation suite:**
+
+- Added an authorization-enforcing confirmation runner and verifier. It refuses any config that
+  differs from the committed preregistration and runs semantic plasticity-on, plasticity-off,
+  zero-rate, and legacy-rule conditions for each frozen held-out seed.
+- Added replay verification for every child config/event/snapshot/report/manifest, exact off/zero
+  output/action identity, paired seeded population/energy intervals, extinction fractions, win
+  fraction, and explicit birth/surviving-descendant outcomes.
+- Executed exactly config ID `49aa29a2c93825536789a87625f3df873bd653dece1f157554c9b16233d63f9a`
+  on seeds `301, 302, 303, 304, 305` at 384 steps. Retained all 20 child runs and summary at
+  `artifacts/phase3/survival_confirmation_v1/`; every artifact replayed byte-for-byte.
+- Learning-on versus off final-population differences were `[3, 4, 3, 0, 3]`, mean `2.6`, 95% CI
+  `[1.2, 3.6]`. Energy-fraction difference mean was `0.06125324743180214`, 95% CI
+  `[0.03033166261088103, 0.08017710520173542]`. Off/zero identity passed on all seeds.
+- Seed 304 went extinct in every condition. Learning extinction was therefore `0.2` and paired win
+  fraction `0.8`, violating the frozen `0.0` maximum and `1.0` minimum despite control extinction
+  `0.8`. The stored result is `acceptance_passed: false`; Phase 3 does not advance.
+- Learning-on births were `0, 0, 1, 4, 1`; every learning-on surviving-descendant count was zero.
+  The result supports a repeatable but not universal lifetime-survival effect, not enhanced
+  reproductive/evolutionary success.
+- Changed files for this bounded ticket: `src/worm_world/experiments/learning_survival_gate.py`,
+  `src/worm_world/experiments/__init__.py`, `tests/test_learning_survival_gate.py`, the retained
+  confirmation suite, and this handoff.
 
 **P3-T08 — explicit survival-gate protocol amendment and preregistration:**
 
@@ -318,7 +342,7 @@ python -m uv run pytest
 python -m uv run pre-commit validate-config
 ```
 
-Final expected test result: `87 passed`. Coverage includes genome validation/round trips and IDs;
+Final expected test result: `88 passed`. Coverage includes genome validation/round trips and IDs;
 pure phenotype identity/differences; seeded inheritance; compatibility; transitive ancestry;
 asexual and sexual births; reproduction conservation; fair shared-resource competition; stable
 entity/genome snapshots; exactly-once deaths; deterministic event ordering; strict config identity;
@@ -347,15 +371,18 @@ Phase 3 replay artifacts, and blocked confirmation under unchanged criteria.
 P3-T08 additions cover canonical survival-gate identity, evidence/config binding, strict seed
 partitions, deterministic authorization CIs, extinction criteria, explicit birth/descendant
 reporting, honest unauthorized fixtures, authorization replay, and tamper rejection.
+P3-T09 additions cover exact preregistration enforcement, all four confirmatory controls, held-out
+child replay, paired survival statistics, off/zero identity, explicit descendant outcomes, honest
+failed-gate persistence, and summary tamper rejection.
 
 Measured local benchmarks on 2026-07-15:
 
 ```powershell
 python -m uv run python -m worm_world.benchmark --mode sandbox --steps 100000
-# 100000 steps in 1.310454500024207 s; 76309.4025760931 steps/s
+# 100000 steps in 1.3363087000325322 s; 74833.00826939578 steps/s
 
 python -m uv run python -m worm_world.benchmark --mode population --steps 1000
-# 1000 steps with 64 organisms in 2.73546570003964 s; 365.56846608806273 world steps/s
+# 1000 steps with 64 organisms in 2.7462245000060648 s; 364.1362896579619 world steps/s
 ```
 
 These are local regression measurements, not portable thresholds. The Phase 1 retained replay was
@@ -411,6 +438,9 @@ also re-simulated byte-for-byte with unchanged event hash
     supporting measures. This protocol change is versioned and made before fresh seeds execute.
     Births and surviving descendants remain reported; they are not converted into rewards or hidden
     objectives, and evolutionary claims still require descendants.
+17. Confirmatory thresholds are hard gates, not suggestions. A positive mean/CI does not compensate
+    for failing the frozen every-seed win or zero-learning-extinction criteria. Consumed seeds
+    `301`–`305` remain evidence and cannot be used for subsequent tuning.
 
 ## Known blockers and limitations
 
@@ -439,9 +469,12 @@ also re-simulated byte-for-byte with unchanged event hash
 - Correcting binary eligibility produced strong development survival/final-population advantages
   but not birth-count advantage. This creates a protocol question that must be resolved explicitly;
   confirmation cannot proceed under the existing birth-gated criteria.
-- The amended survival gate is development-authorized, but no confirmatory result exists yet. All
-  development surviving-descendant counts are zero, so the current evidence is lifetime survival
-  only and cannot support a learning-enhanced reproductive/evolutionary-success claim.
+- Development and confirmatory surviving-descendant counts are zero, so the current evidence is a
+  lifetime-survival effect only and cannot support a learning-enhanced reproductive/evolutionary-
+  success claim.
+- The first survival confirmation failed because seed 304 extinguished every condition. The other
+  four seeds strongly favored learning-on, but thresholds forbid a phase advance. Seeds `301`–`305`
+  are consumed and must not inform mechanism tuning beyond this recorded failure classification.
 - The Canvas viewer is replay-only: it has no live streaming, terrain height, dynamic ecology, or
   materials. Those require backward-compatible later viewer schemas. Automated direct-file visual
   QA was unavailable because the in-app browser disallows `file:` navigation; exporter fidelity,
@@ -450,16 +483,17 @@ also re-simulated byte-for-byte with unchanged event hash
 
 ## Exact next ticket
 
-**P3-T09 — execute the frozen survival confirmation suite**
+**P3-T10 — expanded development-only robustness screen**
 
-Execute exactly the authorized config in
-`artifacts/phase3/survival_gate_preregistration_v1/survival_gate_config.json` on held-out seeds
-`301`–`305`; do not change the genome, horizon, world generator, rule, thresholds, bootstrap inputs,
-or seed list. Run matched semantic plasticity-on, plasticity-off, zero-rate, and legacy-rule
-conditions, retaining config, raw diagnostics, snapshots, report, and manifest for every child.
-Verify every child replay and exact off/zero identity, compute the frozen paired population/energy
-intervals and extinction fractions, and report births plus surviving descendants without adding
-them to the predicate. If and only if the stored gate passes, record Phase 3's scientific exit
-evidence and exact Phase 4 first ticket; otherwise keep Phase 3 open with a new development-only
-ticket. Run formatting, lint, strict types, the full suite, pre-commit validation, both benchmarks,
-and every retained replay; then update this handoff and commit the result.
+Lock a new development bank of at least ten seeds that excludes every consumed held-out seed and
+run a bounded semantic-plasticity rate screen over genome-encoded rates `0.25, 0.5, 1.0`, with
+matched off and zero controls at the existing 384-step horizon. Do not inspect or reuse seeds
+`201`–`205` or `301`–`305`, do not alter world generation, action priors, homeostatic modulation,
+gate thresholds, or learning rule, and do not run any new held-out seed. Select a candidate only if
+it has strictly positive final-population difference and avoids extinction on every development
+seed while preserving off/zero identity; otherwise report no candidate. Retain replayable child
+artifacts and deterministic rate-by-seed matrices including births and surviving descendants.
+Pre-register a new held-out set only after a candidate passes, without executing it. Test bank
+separation, rate bounds, deterministic selection, no-candidate reporting, artifact replay/tamper
+rejection, and every prior replay. Run formatting, lint, strict types, the full suite, pre-commit
+validation, both benchmarks, and every retained replay; then update this handoff.

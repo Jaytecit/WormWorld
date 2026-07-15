@@ -36,6 +36,8 @@ from worm_world.experiments.learning_suite import (
 from worm_world.experiments.learning_survival_gate import (
     SurvivalGateConfig,
     SurvivalGateCriteria,
+    run_survival_confirmation,
+    verify_survival_confirmation,
     verify_survival_gate_preregistration,
     write_survival_gate_preregistration,
 )
@@ -72,6 +74,7 @@ __all__ = [
     "run_learning_evaluation_suite",
     "run_phase2_acceptance_suite",
     "run_sandbox_experiment",
+    "run_survival_confirmation",
     "simulate_sandbox",
     "compare_action_divergence",
     "simulate_evolution",
@@ -81,6 +84,7 @@ __all__ = [
     "verify_learning_evaluation_suite",
     "verify_sandbox_replay",
     "verify_survival_gate_preregistration",
+    "verify_survival_confirmation",
     "verify_plasticity_sensitivity",
     "verify_binary_margin_analysis",
     "write_binary_margin_analysis",
