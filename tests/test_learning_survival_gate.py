@@ -8,6 +8,7 @@ from worm_world.experiments import (
     PlasticitySensitivityConfig,
     SurvivalGateConfig,
     SurvivalGateCriteria,
+    learning_robustness,
     run_plasticity_sensitivity,
     run_survival_confirmation,
     verify_survival_confirmation,
@@ -122,3 +123,35 @@ def test_authorized_confirmation_replays_all_controls(tmp_path: Path) -> None:
     path.write_text("{}\n", encoding="utf-8")
     with pytest.raises(ValueError, match="confirmation replay diverged"):
         verify_survival_confirmation(confirmation)
+
+
+def test_robustness_authorization_must_bind_the_exact_config(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    gate = _gate(_sensitivity())
+    preregistration = tmp_path / "preregistration"
+    preregistration.mkdir()
+    (preregistration / "survival_gate_config.json").write_text(
+        gate.to_json() + "\n", encoding="utf-8"
+    )
+
+    def mismatched_authorization(
+        artifact_directory: Path, *, robustness_directory: Path
+    ) -> SurvivalGateConfig:
+        assert artifact_directory == preregistration
+        assert robustness_directory == tmp_path / "robustness"
+        return replace(gate, development_evidence_id="f" * 64)
+
+    monkeypatch.setattr(
+        learning_robustness,
+        "verify_robustness_survival_preregistration",
+        mismatched_authorization,
+    )
+    with pytest.raises(ValueError, match="authorization config diverged"):
+        run_survival_confirmation(
+            gate,
+            artifact_directory=tmp_path / "confirmation",
+            preregistration_directory=preregistration,
+            robustness_directory=tmp_path / "robustness",
+            project_root=PROJECT_ROOT,
+        )

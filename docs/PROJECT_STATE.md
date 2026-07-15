@@ -2,18 +2,33 @@
 
 ## Status
 
-- **Active phase:** Phase 3 — lifetime learning.
-- **Phase status:** Phase 2 is complete and its exit gate passed on 2026-07-15. Phase 3 is in
-  progress; its scientific exit gate has not passed.
-- **Last completed ticket:** P3-T09 — frozen survival confirmation suite. All engineering/replay
-  checks passed, but the predeclared scientific gate failed on one of five seeds; Phase 3 remains
-  open and no Phase 4 work is authorized.
+- **Active phase:** Phase 4 — stable ecology.
+- **Phase status:** Phase 3 completed and its frozen lifetime-learning exit gate passed on
+  2026-07-15. Phase 4 is authorized but no ecology ticket has started.
+- **Last completed ticket:** P3-T11 — frozen rate-0.25 survival reconfirmation. Every engineering,
+  replay, and preregistered scientific predicate passed across five fresh held-out seeds. This is a
+  lifetime-survival result only; surviving-descendant counts remain zero.
 - **Repository state:** Local Git repository on `main`. The completed Phase 2, P3-T01, viewer
   contract, and Canvas viewer build was committed as `dd23200` on 2026-07-15. P3-T02 was committed
-  through P3-T07 was committed through `c5975ad`, and P3-T08 as `362c8cf`; P3-T09 and this handoff
-  are uncommitted. No remote is configured and GitHub CLI is not installed.
+  through P3-T07 was committed through `c5975ad`, P3-T08 as `362c8cf`, and P3-T09 as `cb73073`;
+  P3-T10, P3-T11, the Phase 3 viewer compatibility follow-up, and this handoff are uncommitted. No
+  remote is configured and GitHub CLI is not installed.
 
 ## Completed viewer scope
+
+**V-T02 — Phase 3 learning-replay compatibility and visual QA:**
+
+- Extended the strict read-only loader to dispatch by the stored versioned experiment type and
+  accept current `LearningExperimentConfig` artifacts as well as Phase 2 evolution artifacts. It
+  still validates config/manifest identity and never simulates or mutates world state.
+- Added a learning-artifact regression test and exported the confirmed seed-501 learning-on replay
+  to `artifacts/viewer/p3t11_seed_501_on/`. The in-app Canvas viewer was opened over localhost,
+  playback and final-frame scrubbing were exercised, and browser logs contained no warnings/errors.
+- Visual QA confirmed step `384`, time `192.00 s`, and two active organisms at the final frame,
+  matching the authoritative P3-T11 summary. The open interface remains a replay, not a live
+  simulation controller.
+- Changed files: `src/worm_world/viewer/replay.py`, `tests/test_viewer_replay.py`, the two retained
+  Phase 3 viewer exports, and this handoff.
 
 **V-T01 — read-only static Canvas population replay viewer:**
 
@@ -35,6 +50,52 @@
   `docs/VIEWER_CONTRACT.md`, and this handoff.
 
 ## Completed Phase 3 scope
+
+**P3-T11 — frozen rate-0.25 survival reconfirmation:**
+
+- Extended confirmation authorization to accept exactly one evidence source and bind the P3-T10
+  robustness verifier's returned config byte-for-byte. Added mismatch rejection while preserving
+  the original P3-T08/P3-T09 authorization path and artifact identity.
+- Executed exactly preregistration config ID
+  `2ce5947b237602de545c4893c18087bc2b4ecee4dac8b14c2547a0d71a9ae070` on held-out seeds
+  `501, 502, 503, 504, 505`, rate `0.25`, four founders, 384 steps, with semantic on, off, zero-rate,
+  and legacy controls. Retained all 20 children at `artifacts/phase3/survival_confirmation_v2/`.
+- Learning-on final-population advantages were `[2,4,3,3,2]`, mean `2.8`, 95% CI `[2.2,3.4]`.
+  Energy-fraction advantage mean was `0.017126347492499628`, 95% CI
+  `[0.008212209694103906,0.02560086408894993]`. Learning extinction was `0.0`, control extinction
+  `0.4`, win fraction `1.0`, and off/zero identity was exact.
+- Every frozen predicate passed and the retained result is `acceptance_passed: true`; Phase 3's
+  lifetime-learning gate is complete. Learning-on births were `[2,0,0,0,1]`, but every
+  surviving-descendant count was zero, so no reproductive/evolutionary-success claim is made.
+- Every P3-T11 child and all retained Phase 1–3 artifacts replayed byte-for-byte after the change.
+  Changed files for this ticket: `src/worm_world/experiments/learning_survival_gate.py`,
+  `tests/test_learning_survival_gate.py`, the retained confirmation suite, and this handoff.
+
+**P3-T10 — expanded development-only robustness screen:**
+
+- Added strict canonical `RobustnessScreenConfig`, fixed rates `0.25, 0.5, 1.0`, consumed-held-out
+  seed exclusion, matched semantic on/off/zero children, deterministic lowest-qualified-rate
+  selection, explicit birth/surviving-descendant matrices, and full child replay/tamper verification.
+- Locked fresh development seeds `401`–`410`, four founders, the unchanged 384-step fixture/world,
+  action-semantic eligibility, and the P3-T09 founder genome. Retained 90 child runs at
+  `artifacts/phase3/development_robustness_v1/` under config ID
+  `09a8f79e63e8e57531343e77302912ef21163246dcd3d479dc04c2fb90afbcc7`.
+- Final-population advantages were `[3,4,2,3,2,1,3,3,3,3]` at rate `0.25`,
+  `[3,4,2,3,2,1,3,3,4,3]` at `0.5`, and `[3,4,2,3,2,1,3,3,4,4]` at `1.0`; means were
+  `2.7`, `2.8`, and `2.9`. Learning-on avoided extinction on every seed and off/zero outputs,
+  actions, and reports were exactly identical at every rate.
+- All rates qualified. The predeclared conservative rule selected the lowest, rate `0.25`, genome
+  ID `888710e6cd982b741edee8b0c64e25edfb62d41d2a241f52896458d763944154`. Learning-on births
+  were `[1,0,2,0,2,2,0,0,0,1]`, but surviving descendants were zero in every rate/seed condition;
+  the evidence remains lifetime-survival evidence only.
+- Added a robustness-evidence-bound preregistration writer/verifier. Fresh held-out seeds
+  `501`–`505` are frozen but unexecuted at
+  `artifacts/phase3/survival_gate_preregistration_v2/`, config ID
+  `2ce5947b237602de545c4893c18087bc2b4ecee4dac8b14c2547a0d71a9ae070`, with all P3-T09
+  thresholds unchanged. No held-out result was inspected during candidate selection.
+- Changed files for this bounded ticket: `src/worm_world/experiments/learning_robustness.py`,
+  `src/worm_world/experiments/__init__.py`, `tests/test_learning_robustness.py`, both retained P3-T10
+  artifact directories, and this handoff.
 
 **P3-T09 — frozen survival confirmation suite:**
 
@@ -342,7 +403,7 @@ python -m uv run pytest
 python -m uv run pre-commit validate-config
 ```
 
-Final expected test result: `88 passed`. Coverage includes genome validation/round trips and IDs;
+Final expected test result: `93 passed`. Coverage includes genome validation/round trips and IDs;
 pure phenotype identity/differences; seeded inheritance; compatibility; transitive ancestry;
 asexual and sexual births; reproduction conservation; fair shared-resource competition; stable
 entity/genome snapshots; exactly-once deaths; deterministic event ordering; strict config identity;
@@ -374,15 +435,23 @@ reporting, honest unauthorized fixtures, authorization replay, and tamper reject
 P3-T09 additions cover exact preregistration enforcement, all four confirmatory controls, held-out
 child replay, paired survival statistics, off/zero identity, explicit descendant outcomes, honest
 failed-gate persistence, and summary tamper rejection.
+P3-T10 additions cover a strict ten-seed development bank, consumed-seed rejection, exact bounded
+rate set, deterministic lowest-qualified selection and no-candidate reporting, rate-by-seed outcome
+matrices, exact off/zero identity, all 90 child replays, summary tamper rejection, and a fresh
+evidence-bound held-out preregistration that cannot be written before a candidate qualifies.
+P3-T11 additions cover exclusive evidence-source selection, exact robustness authorization/config
+binding, all four frozen confirmation controls, complete child replay, honest pass persistence, and
+unchanged statistical predicates. Viewer additions cover strict learning-config dispatch, immutable
+Phase 3 frame projection, browser playback/final-state visual QA, and clean browser logs.
 
 Measured local benchmarks on 2026-07-15:
 
 ```powershell
 python -m uv run python -m worm_world.benchmark --mode sandbox --steps 100000
-# 100000 steps in 1.3363087000325322 s; 74833.00826939578 steps/s
+# 100000 steps in 1.0305192999076098 s; 97038.45431033208 steps/s
 
 python -m uv run python -m worm_world.benchmark --mode population --steps 1000
-# 1000 steps with 64 organisms in 2.7462245000060648 s; 364.1362896579619 world steps/s
+# 1000 steps with 64 organisms in 2.064009499968961 s; 484.49389405186275 world steps/s
 ```
 
 These are local regression measurements, not portable thresholds. The Phase 1 retained replay was
@@ -441,6 +510,18 @@ also re-simulated byte-for-byte with unchanged event hash
 17. Confirmatory thresholds are hard gates, not suggestions. A positive mean/CI does not compensate
     for failing the frozen every-seed win or zero-learning-extinction criteria. Consumed seeds
     `301`–`305` remain evidence and cannot be used for subsequent tuning.
+18. The P3-T10 candidate rule is deterministic and conservative: a rate qualifies only with a
+    strictly positive final-population difference, no learning-on extinction, and exact off/zero
+    identity on every development seed; the lowest qualifying rate is selected. Rates `0.25`,
+    `0.5`, and `1.0` all qualified, so `0.25` is frozen for confirmation without selecting on a
+    held-out result.
+19. Phase 3 passed on the preregistered lifetime-survival predicate. This authorizes ecology work
+    but does not establish learning-enhanced reproductive success: zero descendants survived the
+    confirmation horizon. Phase 4 population-persistence claims must require actual replacement of
+    founders by surviving descendants rather than treating founder survival as stable ecology.
+20. The replay viewer may parse both evolution and lifetime-learning configs only through their
+    explicit stored experiment type. Its frame inputs remain immutable saved snapshots; browser
+    playback, inspection, and visual QA cannot advance or influence the simulator.
 
 ## Known blockers and limitations
 
@@ -450,31 +531,20 @@ also re-simulated byte-for-byte with unchanged event hash
   speciation, learning, or ecological stability.
 - Resource patches remain finite point fields on flat 2.5D terrain. Richer resource dynamics and
   ecology remain Phase 4 work.
-- The Phase 2 fixed action protocol remains an experiment input; the separate Phase 3 runner now
-  uses an autonomous recurrent/plastic controller. Phase 3 still needs predeclared matched held-out
-  learning-on/off evidence without direct task rewards.
-- P3-T03 supplies a replayable plastic learning experiment, not demonstrated adaptive benefit. The
-  retained seed-11 diagnostic conditions have equal births and final population. Plasticity
-  currently updates only hidden-to-output synapses. No learning-benefit or emergence claim is
-  warranted until the matched held-out Phase 3 acceptance suite passes.
-- The first locked held-out suite failed with zero birth/population advantage across all five
-  seeds. Seeds `201`–`205` are consumed held-out evidence and must not be used for P3-T05 tuning or
-  a later confirmatory gate. Only development seeds `101`–`103` may inform the next mechanism work.
-- Rate `1.0` establishes causal action divergence but still has zero development birth/population
-  advantage. Its preregistered seeds `301`–`305` must not be executed while
-  `future_confirmatory_authorized` is false.
-- Centering binary output biases also failed and exposed a mechanism limitation: eligibility uses
-  `tanh(raw_output)` for every channel, so a binary unit at its neutral zero logit has zero
-  postsynaptic eligibility even though its sigmoid decision probability is `0.5`.
-- Correcting binary eligibility produced strong development survival/final-population advantages
-  but not birth-count advantage. This creates a protocol question that must be resolved explicitly;
-  confirmation cannot proceed under the existing birth-gated criteria.
-- Development and confirmatory surviving-descendant counts are zero, so the current evidence is a
-  lifetime-survival effect only and cannot support a learning-enhanced reproductive/evolutionary-
-  success claim.
+- The Phase 2 fixed action protocol remains an experiment input; Phase 3 separately established a
+  held-out lifetime-survival advantage for the autonomous recurrent/plastic controller. Plasticity
+  currently updates only hidden-to-output synapses; broader learning or emergence claims remain
+  unwarranted without separate evidence.
+- Earlier held-out seeds `201`–`205` and `301`–`305` are consumed evidence and must never be reused
+  for tuning or a later gate. Their failures remain retained history, not candidate inputs.
+- Development and confirmatory surviving-descendant counts remain zero, including all 30 P3-T10
+  learning-on rate/seed conditions. Current evidence is a lifetime-survival effect only and cannot
+  support a learning-enhanced reproductive/evolutionary-success claim.
 - The first survival confirmation failed because seed 304 extinguished every condition. The other
   four seeds strongly favored learning-on, but thresholds forbid a phase advance. Seeds `301`–`305`
   are consumed and must not inform mechanism tuning beyond this recorded failure classification.
+- Rate `0.25` passed the frozen held-out lifetime-survival gate on seeds `501`–`505`. Those seeds are
+  now consumed evidence and must not be reused for Phase 4 tuning.
 - The Canvas viewer is replay-only: it has no live streaming, terrain height, dynamic ecology, or
   materials. Those require backward-compatible later viewer schemas. Automated direct-file visual
   QA was unavailable because the in-app browser disallows `file:` navigation; exporter fidelity,
@@ -483,17 +553,17 @@ also re-simulated byte-for-byte with unchanged event hash
 
 ## Exact next ticket
 
-**P3-T10 — expanded development-only robustness screen**
+**P4-T01 — deterministic resource-limited plant biomass field**
 
-Lock a new development bank of at least ten seeds that excludes every consumed held-out seed and
-run a bounded semantic-plasticity rate screen over genome-encoded rates `0.25, 0.5, 1.0`, with
-matched off and zero controls at the existing 384-step horizon. Do not inspect or reuse seeds
-`201`–`205` or `301`–`305`, do not alter world generation, action priors, homeostatic modulation,
-gate thresholds, or learning rule, and do not run any new held-out seed. Select a candidate only if
-it has strictly positive final-population difference and avoids extinction on every development
-seed while preserving off/zero identity; otherwise report no candidate. Retain replayable child
-artifacts and deterministic rate-by-seed matrices including births and surviving descendants.
-Pre-register a new held-out set only after a candidate passes, without executing it. Test bank
-separation, rate bounds, deterministic selection, no-candidate reporting, artifact replay/tamper
-rejection, and every prior replay. Run formatting, lint, strict types, the full suite, pre-commit
-validation, both benchmarks, and every retained replay; then update this handoff.
+Add one independently configurable world-owned plant patch state with biomass, local water, and
+nutrient stores. Implement fixed-timestep growth that requires positive light, water, and nutrients,
+deducts those inputs explicitly, caps biomass, and exposes edible energy only through the existing
+simultaneous consumption interface. The feature must default off so every retained Phase 1–3 config
+and replay remains byte-identical. Do not add arbitrary timer respawn, controller inputs, rewards,
+fitness scores, scripted foraging behavior, seasons, decay, or viewer authority. Log plant growth,
+resource uptake, and organism consumption sufficiently to audit energy/mass flows. Add deterministic
+unit tests for no-input/no-growth, bounded growth and uptake, fair simultaneous feeding, lifecycle
+invariants, strict config identity, default-off historical replay, snapshot projection, and a small
+benchmark comparison. Run formatting, lint, strict types, the full suite, pre-commit validation,
+both benchmarks, and every retained replay; update this handoff without claiming ecological
+stability from the existence of the plant mechanism alone.

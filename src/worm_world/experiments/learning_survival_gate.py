@@ -478,7 +478,8 @@ def run_survival_confirmation(
     *,
     artifact_directory: Path,
     preregistration_directory: Path,
-    development_evidence_directory: Path,
+    development_evidence_directory: Path | None = None,
+    robustness_directory: Path | None = None,
     project_root: Path,
 ) -> dict[str, JsonValue]:
     preregistered = SurvivalGateConfig.from_json(
@@ -488,12 +489,27 @@ def run_survival_confirmation(
     )
     if config != preregistered:
         raise ValueError("confirmation config differs from preregistration")
-    authorization = verify_survival_gate_preregistration(
-        preregistration_directory,
-        development_evidence_directory=development_evidence_directory,
-    )
-    if authorization.get("confirmation_authorized") is not True:
-        raise ValueError("confirmation is not authorized")
+    if (development_evidence_directory is None) == (robustness_directory is None):
+        raise ValueError("confirmation requires exactly one development evidence source")
+    if robustness_directory is not None:
+        from worm_world.experiments.learning_robustness import (
+            verify_robustness_survival_preregistration,
+        )
+
+        authorized_config = verify_robustness_survival_preregistration(
+            preregistration_directory,
+            robustness_directory=robustness_directory,
+        )
+        if authorized_config != config:
+            raise ValueError("robustness authorization config diverged")
+    else:
+        assert development_evidence_directory is not None
+        authorization = verify_survival_gate_preregistration(
+            preregistration_directory,
+            development_evidence_directory=development_evidence_directory,
+        )
+        if authorization.get("confirmation_authorized") is not True:
+            raise ValueError("confirmation is not authorized")
     artifact_directory.mkdir(parents=True, exist_ok=False)
     simulations: dict[tuple[int, str], LearningSimulation] = {}
     identities: dict[tuple[int, str], tuple[str, str]] = {}

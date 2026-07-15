@@ -16,6 +16,13 @@ from worm_world.experiments.learning import (
     simulate_learning,
     verify_learning_replay,
 )
+from worm_world.experiments.learning_robustness import (
+    RobustnessScreenConfig,
+    run_robustness_screen,
+    verify_robustness_screen,
+    verify_robustness_survival_preregistration,
+    write_robustness_survival_preregistration,
+)
 from worm_world.experiments.learning_sensitivity import (
     ActionDivergenceReport,
     PlasticitySensitivityConfig,
@@ -61,6 +68,7 @@ __all__ = [
     "LearningSuiteConfig",
     "PlasticitySensitivityConfig",
     "ReplayArtifacts",
+    "RobustnessScreenConfig",
     "SandboxExperimentConfig",
     "SurvivalGateConfig",
     "SurvivalGateCriteria",
@@ -69,6 +77,7 @@ __all__ = [
     "center_binary_output_biases",
     "run_noop_experiment",
     "run_plasticity_sensitivity",
+    "run_robustness_screen",
     "run_evolution_experiment",
     "run_learning_experiment",
     "run_learning_evaluation_suite",
@@ -86,7 +95,10 @@ __all__ = [
     "verify_survival_gate_preregistration",
     "verify_survival_confirmation",
     "verify_plasticity_sensitivity",
+    "verify_robustness_screen",
+    "verify_robustness_survival_preregistration",
     "verify_binary_margin_analysis",
     "write_binary_margin_analysis",
+    "write_robustness_survival_preregistration",
     "write_survival_gate_preregistration",
 ]

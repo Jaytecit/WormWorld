@@ -4,6 +4,7 @@ from pathlib import Path
 import pytest
 
 from worm_world.experiments.evolution import EvolutionExperimentConfig, run_evolution_experiment
+from worm_world.experiments.learning import LearningExperimentConfig, run_learning_experiment
 from worm_world.viewer import PopulationReplay
 
 
@@ -26,3 +27,17 @@ def test_population_replay_projects_immutable_renderer_neutral_frames(tmp_path: 
     assert final.step_index == replay.manifest.final_step == 2
     with pytest.raises(FrozenInstanceError):
         first.width_meters = 20.0  # type: ignore[misc]
+
+
+def test_population_replay_accepts_current_learning_artifacts(tmp_path: Path) -> None:
+    artifact_directory = tmp_path / "learning"
+    config = LearningExperimentConfig.training_fixture(
+        401, plasticity_enabled=True, founder_count=2, step_count=2
+    )
+    run_learning_experiment(config, artifact_directory=artifact_directory, project_root=Path.cwd())
+
+    replay = PopulationReplay.from_directory(artifact_directory)
+
+    assert replay.config == config
+    assert replay.frame(-1).step_index == 2
+    assert len(replay.frame(-1).organisms) == 2

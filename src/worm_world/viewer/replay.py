@@ -2,14 +2,20 @@
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass
 from pathlib import Path
 from typing import cast
 
-from worm_world.experiments.evolution import EvolutionExperimentConfig
+from worm_world.experiments.evolution import (
+    EVOLUTION_EXPERIMENT_TYPE,
+    EvolutionExperimentConfig,
+)
+from worm_world.experiments.learning import LEARNING_EXPERIMENT_TYPE, LearningExperimentConfig
 from worm_world.schemas import JsonValue, ReplayManifest, WorldSnapshot
 
 VIEWER_FRAME_SCHEMA_VERSION = 1
+ReplayConfig = EvolutionExperimentConfig | LearningExperimentConfig
 
 
 def _number(value: JsonValue, name: str) -> float:
@@ -110,7 +116,7 @@ class PopulationReplay:
 
     def __init__(
         self,
-        config: EvolutionExperimentConfig,
+        config: ReplayConfig,
         manifest: ReplayManifest,
         snapshots: tuple[WorldSnapshot, ...],
     ) -> None:
@@ -132,9 +138,19 @@ class PopulationReplay:
     @classmethod
     def from_directory(cls, artifact_directory: Path) -> PopulationReplay:
         """Read artifacts only; never re-run or advance the authoritative simulator."""
-        config = EvolutionExperimentConfig.from_json(
+        serialized_config = (
             (artifact_directory / "config.json").read_text(encoding="utf-8").rstrip("\n")
         )
+        decoded: object = json.loads(serialized_config)
+        if not isinstance(decoded, dict):
+            raise ValueError("viewer replay configuration must be an object")
+        experiment_type = cast(dict[str, JsonValue], decoded).get("experiment_type")
+        if experiment_type == EVOLUTION_EXPERIMENT_TYPE:
+            config: ReplayConfig = EvolutionExperimentConfig.from_json(serialized_config)
+        elif experiment_type == LEARNING_EXPERIMENT_TYPE:
+            config = LearningExperimentConfig.from_json(serialized_config)
+        else:
+            raise ValueError("viewer replay has an unsupported experiment type")
         manifest = ReplayManifest.from_json(
             (artifact_directory / "manifest.json").read_text(encoding="utf-8").rstrip("\n")
         )
