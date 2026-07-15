@@ -1,6 +1,7 @@
 """Authoritative headless world implementations."""
 
 from worm_world.world.noop import NoOpWorld
+from worm_world.world.plants import PlantGrowth, PlantPatch, PlantPatchConfig
 from worm_world.world.population import (
     Founder,
     PopulationAction,
@@ -25,6 +26,9 @@ __all__ = [
     "PopulationAction",
     "PopulationTransition",
     "PopulationWorld",
+    "PlantGrowth",
+    "PlantPatch",
+    "PlantPatchConfig",
     "ReproductionConfig",
     "PopulationStepResult",
     "ResourceFieldConfig",

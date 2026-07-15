@@ -19,6 +19,7 @@ from worm_world.organisms import (
 )
 from worm_world.rng import NamedRandomStreams
 from worm_world.schemas import JsonValue, SimulationEvent, WorldSnapshot
+from worm_world.world.plants import PlantGrowth, PlantPatch, PlantPatchConfig
 from worm_world.world.sandbox import InitialOrganismConfig, ResourceFieldConfig
 
 
@@ -118,6 +119,7 @@ class PopulationWorld:
         resource_config: ResourceFieldConfig,
         reproduction_config: ReproductionConfig,
         founders: Sequence[Founder],
+        plant_config: PlantPatchConfig | None = None,
         initial_event_sequence: int = 0,
     ) -> None:
         if not founders:
@@ -142,6 +144,15 @@ class PopulationWorld:
         self._event_sequence = initial_event_sequence
         self.food_energy = resource_config.food_energy
         self.water_amount = resource_config.water_amount
+        self.plant_patch: PlantPatch | None = None
+        if plant_config is not None and plant_config.enabled:
+            if resource_config.food_energy != 0.0:
+                raise ValueError("static food must be zero when the plant patch is enabled")
+            self.plant_patch = PlantPatch(
+                plant_config,
+                world_width=world_config.width_meters,
+                world_height=world_config.height_meters,
+            )
         self.energy_dissipated = 0.0
         self.hydration_dissipated = 0.0
         self.birth_count = 0
@@ -194,9 +205,8 @@ class PopulationWorld:
             raise ValueError("cannot sense for a tombstoned entity")
         state = self.population.state(entity_id)
         phenotype = founder_phenotype(self.genome(entity_id))
-        food_dx, food_dy, food_intensity = self._resource_signal(
-            state, self.resource_config.food_x, self.resource_config.food_y, self.food_energy
-        )
+        food_x, food_y, food_energy = self._edible_resource()
+        food_dx, food_dy, food_intensity = self._resource_signal(state, food_x, food_y, food_energy)
         water_dx, water_dy, water_intensity = self._resource_signal(
             state, self.resource_config.water_x, self.resource_config.water_y, self.water_amount
         )
@@ -284,6 +294,19 @@ class PopulationWorld:
     def _near(self, state: WormState, x: float, y: float) -> bool:
         return math.hypot(state.x - x, state.y - y) <= self.resource_config.interaction_radius
 
+    def _edible_resource(self) -> tuple[float, float, float]:
+        if self.plant_patch is not None:
+            return (
+                self.plant_patch.config.x,
+                self.plant_patch.config.y,
+                self.plant_patch.biomass_energy,
+            )
+        return (
+            self.resource_config.food_x,
+            self.resource_config.food_y,
+            self.food_energy,
+        )
+
     def advance(self, actions: Mapping[int, PopulationAction]) -> PopulationTransition:
         active_ids = self.population.active_entity_ids()
         if set(actions) != set(active_ids):
@@ -292,6 +315,10 @@ class PopulationWorld:
             entity_id: self._move(entity_id, actions[entity_id].motion) for entity_id in active_ids
         }
         dt = self.world_config.timestep_seconds
+        plant_growth: PlantGrowth | None = None
+        if self.plant_patch is not None:
+            plant_growth = self.plant_patch.grow(dt)
+        food_x, food_y, edible_energy = self._edible_resource()
         food_claims: dict[int, float] = {}
         water_claims: dict[int, float] = {}
         for entity_id in active_ids:
@@ -303,8 +330,7 @@ class PopulationWorld:
                     (phenotype.physiology.max_energy - state.physiology.energy)
                     / self.resource_config.food_assimilation_efficiency,
                 )
-                if actions[entity_id].motion.eat
-                and self._near(state, self.resource_config.food_x, self.resource_config.food_y)
+                if actions[entity_id].motion.eat and self._near(state, food_x, food_y)
                 else 0.0
             )
             water_claims[entity_id] = (
@@ -316,13 +342,34 @@ class PopulationWorld:
                 and self._near(state, self.resource_config.water_x, self.resource_config.water_y)
                 else 0.0
             )
-        food = _fair_allocations(food_claims, self.food_energy)
+        food = _fair_allocations(food_claims, edible_energy)
         water = _fair_allocations(water_claims, self.water_amount)
-        self.food_energy -= sum(food.values())
+        food_consumed = sum(food.values())
+        if self.plant_patch is not None:
+            self.plant_patch.consume(food_consumed)
+        else:
+            self.food_energy -= food_consumed
         self.water_amount -= sum(water.values())
         next_step = self._step_index + 1
         deaths: list[int] = []
         events: list[SimulationEvent] = []
+        if self.plant_patch is not None and plant_growth is not None:
+            events.append(
+                self._event(
+                    "plant.step",
+                    0,
+                    {
+                        "biomass_after": self.plant_patch.biomass_energy,
+                        "biomass_before": plant_growth.biomass_before,
+                        "biomass_consumed": food_consumed,
+                        "biomass_grown": plant_growth.biomass_grown,
+                        "light_used": plant_growth.light_used,
+                        "nutrients_used": plant_growth.nutrients_used,
+                        "water_used": plant_growth.water_used,
+                    },
+                    step=next_step,
+                )
+            )
         for entity_id in active_ids:
             state = states[entity_id]
             action = actions[entity_id].motion
@@ -554,6 +601,12 @@ class PopulationWorld:
                     "segments": [{"x": x, "y": y} for x, y in state.segment_positions(body)],
                 }
             )
+        resources: dict[str, JsonValue] = {
+            "food_energy": self.food_energy,
+            "water_amount": self.water_amount,
+        }
+        if self.plant_patch is not None:
+            resources["plant_patch"] = self.plant_patch.state_dict()
         return {
             "accounting": {
                 "energy_dissipated": self.energy_dissipated,
@@ -561,7 +614,7 @@ class PopulationWorld:
             },
             "lifecycle": {"births": self.birth_count, "deaths": self.death_count},
             "organisms": organisms,
-            "resources": {"food_energy": self.food_energy, "water_amount": self.water_amount},
+            "resources": resources,
         }
 
     def snapshot(self) -> WorldSnapshot:

@@ -4,15 +4,38 @@
 
 - **Active phase:** Phase 4 — stable ecology.
 - **Phase status:** Phase 3 completed and its frozen lifetime-learning exit gate passed on
-  2026-07-15. Phase 4 is authorized but no ecology ticket has started.
-- **Last completed ticket:** P3-T11 — frozen rate-0.25 survival reconfirmation. Every engineering,
-  replay, and preregistered scientific predicate passed across five fresh held-out seeds. This is a
-  lifetime-survival result only; surviving-descendant counts remain zero.
-- **Repository state:** Local Git repository on `main`. The completed Phase 2, P3-T01, viewer
-  contract, and Canvas viewer build was committed as `dd23200` on 2026-07-15. P3-T02 was committed
-  through P3-T07 was committed through `c5975ad`, P3-T08 as `362c8cf`, and P3-T09 as `cb73073`;
-  P3-T10, P3-T11, the Phase 3 viewer compatibility follow-up, and this handoff are uncommitted. No
-  remote is configured and GitHub CLI is not installed.
+  2026-07-15. Phase 4 is in progress: its first bounded world mechanism is complete, but no stable
+  ecology or population-persistence gate has yet been run.
+- **Last completed ticket:** P4-T01 — deterministic resource-limited plant biomass field. An
+  opt-in world-owned plant patch now converts explicitly deducted finite light, water, and
+  nutrients into bounded edible biomass and uses the existing fair simultaneous feeding path.
+- **Repository state:** Local Git repository on `main`, eleven commits ahead of configured
+  `origin`. P3-T10, P3-T11, and the Phase 3 viewer follow-up were committed as `0315ffa`; P4-T01
+  is the current commit, both completed on 2026-07-15. GitHub CLI is not installed; no push was
+  attempted.
+
+## Completed Phase 4 scope
+
+**P4-T01 — deterministic resource-limited plant biomass field:**
+
+- Added strict canonical `PlantPatchConfig` identity and a world-owned `PlantPatch` with finite
+  biomass, light, local water, and nutrient state. Fixed-step growth is limited simultaneously by
+  growth rate, biomass capacity, and every required input, and deducts the exact uptake.
+- Integrated the patch as an opt-in `PopulationWorld` food source. Enabled plant biomass uses the
+  existing position sensor, eat action, assimilation efficiency, and order-independent fair claim
+  allocator; ambiguous simultaneous static and plant food pools are rejected.
+- Added one auditable `plant.step` event per enabled step with biomass before/after, growth,
+  consumption, and each input uptake. Enabled snapshots include a detached plant state projection;
+  disabled configurations add no fields or events and preserve historical bytes.
+- Added deterministic tests for no-input growth, bounded growth/uptake, fair feeding, energy and
+  plant lifecycle accounting, strict configuration identity, disabled historical identity,
+  detached snapshot projection, and invalid mixed food sources. Added a matching plant-enabled
+  population benchmark.
+- This is only a plant mechanism. Its input stores are finite and it does not establish resource
+  cycling, descendant replacement, viable ecology, diversity, or seasonal robustness.
+- Changed files: `src/worm_world/world/plants.py`, `src/worm_world/world/population.py`,
+  `src/worm_world/world/__init__.py`, `src/worm_world/benchmark.py`, `tests/test_plants.py`,
+  `tests/test_benchmark.py`, and this handoff.
 
 ## Completed viewer scope
 
@@ -403,7 +426,7 @@ python -m uv run pytest
 python -m uv run pre-commit validate-config
 ```
 
-Final expected test result: `93 passed`. Coverage includes genome validation/round trips and IDs;
+Final test result: `102 passed` in 31.37 seconds. Coverage includes genome validation/round trips and IDs;
 pure phenotype identity/differences; seeded inheritance; compatibility; transitive ancestry;
 asexual and sexual births; reproduction conservation; fair shared-resource competition; stable
 entity/genome snapshots; exactly-once deaths; deterministic event ordering; strict config identity;
@@ -443,6 +466,13 @@ P3-T11 additions cover exclusive evidence-source selection, exact robustness aut
 binding, all four frozen confirmation controls, complete child replay, honest pass persistence, and
 unchanged statistical predicates. Viewer additions cover strict learning-config dispatch, immutable
 Phase 3 frame projection, browser playback/final-state visual QA, and clean browser logs.
+P4-T01 additions cover strict plant config identity, no-input/no-growth, capacity and input-limited
+growth, explicit uptake, fair simultaneous consumption, energy/lifecycle accounting, default-off
+historical identity, detached snapshot projection, invalid mixed food-source rejection, and a
+plant-enabled benchmark. Production-code strict type checking reports zero errors. All 186 retained
+replays re-simulated byte-for-byte: 1 no-op, 1 sandbox, 6 evolution, and 178 learning runs.
+The current desktop shell did not expose `uv` on `PATH`, so the locked existing `.venv` executables
+were used directly for this session's checks; the repository lockfile was not changed.
 
 Measured local benchmarks on 2026-07-15:
 
@@ -451,7 +481,11 @@ python -m uv run python -m worm_world.benchmark --mode sandbox --steps 100000
 # 100000 steps in 1.0305192999076098 s; 97038.45431033208 steps/s
 
 python -m uv run python -m worm_world.benchmark --mode population --steps 1000
-# 1000 steps with 64 organisms in 2.064009499968961 s; 484.49389405186275 world steps/s
+# 1000 steps with 64 organisms in 1.8505469999508932 s; 540.3807631076305 world steps/s
+
+python -m uv run python -m worm_world.benchmark --mode plants --steps 1000
+# 1000 plant-enabled steps with 64 organisms in 1.739423600025475 s;
+# 574.9030885779372 world steps/s
 ```
 
 These are local regression measurements, not portable thresholds. The Phase 1 retained replay was
@@ -522,6 +556,12 @@ also re-simulated byte-for-byte with unchanged event hash
 20. The replay viewer may parse both evolution and lifetime-learning configs only through their
     explicit stored experiment type. Its frame inputs remain immutable saved snapshots; browser
     playback, inspection, and visual QA cannot advance or influence the simulator.
+21. Plant dynamics are world-owned, fixed-step, and opt-in. Disabled plant configuration is not
+    serialized into historical experiment types and therefore cannot change retained config IDs,
+    events, snapshots, or replay bytes.
+22. An enabled plant patch is the sole food pool for that population world. It exposes biomass
+    through the existing sensing/eating interface and fair allocator; combining it with legacy
+    static food is rejected until a future version defines multiple-patch sensing and allocation.
 
 ## Known blockers and limitations
 
@@ -530,7 +570,8 @@ also re-simulated byte-for-byte with unchanged event hash
   world. It establishes the Phase 2 inheritance gate but is not evidence of open-ended evolution,
   speciation, learning, or ecological stability.
 - Resource patches remain finite point fields on flat 2.5D terrain. Richer resource dynamics and
-  ecology remain Phase 4 work.
+  ecology remain Phase 4 work. P4-T01 plants grow from finite local stores with no replenishment,
+  decay, recycling, light cycle, or seasonal forcing, so persistence is not yet expected.
 - The Phase 2 fixed action protocol remains an experiment input; Phase 3 separately established a
   held-out lifetime-survival advantage for the autonomous recurrent/plastic controller. Plasticity
   currently updates only hidden-to-output synapses; broader learning or emergence claims remain
@@ -553,17 +594,16 @@ also re-simulated byte-for-byte with unchanged event hash
 
 ## Exact next ticket
 
-**P4-T01 — deterministic resource-limited plant biomass field**
+**P4-T02 — deterministic detritus and nutrient recycling**
 
-Add one independently configurable world-owned plant patch state with biomass, local water, and
-nutrient stores. Implement fixed-timestep growth that requires positive light, water, and nutrients,
-deducts those inputs explicitly, caps biomass, and exposes edible energy only through the existing
-simultaneous consumption interface. The feature must default off so every retained Phase 1–3 config
-and replay remains byte-identical. Do not add arbitrary timer respawn, controller inputs, rewards,
-fitness scores, scripted foraging behavior, seasons, decay, or viewer authority. Log plant growth,
-resource uptake, and organism consumption sufficiently to audit energy/mass flows. Add deterministic
-unit tests for no-input/no-growth, bounded growth and uptake, fair simultaneous feeding, lifecycle
-invariants, strict config identity, default-off historical replay, snapshot projection, and a small
-benchmark comparison. Run formatting, lint, strict types, the full suite, pre-commit validation,
-both benchmarks, and every retained replay; update this handoff without claiming ecological
-stability from the existence of the plant mechanism alone.
+Add one independently configurable world-owned detritus pool that receives the documented physical
+biomass fraction of newly dead organisms and converts it into the P4-T01 plant patch's local nutrient
+store at a bounded fixed-step decay rate. Default it off so every Phase 1–P4-T01 configuration and
+replay remains byte-identical. Do not create energy, revive organisms, add scavenger behavior,
+controller inputs, rewards, fitness scores, arbitrary respawn, seasons, or viewer authority. Record
+death-to-detritus transfer, decay loss, and nutrient return so the full lifecycle is auditable. Add
+deterministic tests for no-death/no-detritus, exactly-once death transfer, bounded decay, nutrient
+return, mass/energy accounting, simultaneous deaths, strict config identity, default-off replay,
+snapshot projection, and benchmark comparison. Run formatting, lint, strict types, the full suite,
+pre-commit validation, population/ecology benchmarks, and every retained replay; update this handoff
+without claiming a stable ecology until descendant replacement passes a later multi-seed gate.
