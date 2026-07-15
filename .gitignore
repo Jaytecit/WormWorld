@@ -1,0 +1,9 @@
+.venv/
+.codex/
+__pycache__/
+.pytest_cache/
+.ruff_cache/
+.pyright/
+*.py[cod]
+dist/
+build/

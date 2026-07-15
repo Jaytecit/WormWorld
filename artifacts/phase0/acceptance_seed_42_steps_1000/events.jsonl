@@ -1,0 +1,2 @@
+{"data":{"config_id":"ccf7fd21914520a430d8fc8fb6221c9c402098f5f3bcdb44ce0ba5ee0e3eee14","master_seed":42},"event_type":"run.started","schema_version":1,"sequence":0,"step_index":0}
+{"data":{"final_step":1000},"event_type":"run.completed","schema_version":1,"sequence":1,"step_index":1000}
