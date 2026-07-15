@@ -5,12 +5,13 @@
 - **Active phase:** Phase 3 — lifetime learning.
 - **Phase status:** Phase 2 is complete and its exit gate passed on 2026-07-15. Phase 3 is in
   progress; its scientific exit gate has not passed.
-- **Last completed ticket:** P3-T02 — versioned heritable brain priors and local three-factor
-  plasticity. This establishes the learning mechanism and ablation contract; it does not claim a
-  population benefit or advance the Phase 3 scientific gate.
+- **Last completed ticket:** P3-T03 — deterministic learning-on/off experiment and diagnostic
+  artifacts. This establishes the replayable matched experiment boundary; it does not claim a
+  held-out population benefit or advance the Phase 3 scientific gate.
 - **Repository state:** Local Git repository on `main`. The completed Phase 2, P3-T01, viewer
-  contract, and Canvas viewer build was committed as `dd23200` on 2026-07-15. P3-T02 and this
-  handoff are uncommitted. No remote is configured and GitHub CLI is not installed.
+  contract, and Canvas viewer build was committed as `dd23200` on 2026-07-15. P3-T02 was committed
+  as `eafab42`; P3-T03 and this handoff are uncommitted. No remote is configured and GitHub CLI is
+  not installed.
 
 ## Completed viewer scope
 
@@ -34,6 +35,35 @@
   `docs/VIEWER_CONTRACT.md`, and this handoff.
 
 ## Completed Phase 3 scope
+
+**P3-T03 — deterministic learning-on/off experiment and diagnostic artifacts:**
+
+- Added a strict versioned `LearningExperimentConfig`, a seeded procedural training-fixture
+  constructor whose realized resource/founder positions are stored in canonical configuration,
+  and a headless CLI mode that couples `PopulationController` to `PopulationWorld`.
+- Added matched plasticity-on/off conditions that differ only in the runtime ablation flag. They
+  retain identical version-2 founder genomes, world inputs, named streams, recurrent state,
+  eligibility arithmetic, sensors, actions, physiology, and reproduction rules.
+- Added ordered `controller.step` events containing raw internal-state fractions, their changes,
+  neuromodulators, update and learned-weight magnitudes, controller outputs, chosen actions, genome
+  IDs, and the plasticity flag. These events are part of the replay manifest's event hash.
+- Added byte-for-byte verification of configuration, events, population snapshots, diagnostic
+  report, manifest identity/counts, and tamper rejection. Controller state is synchronized after
+  deaths; births receive clean lifetime state on first observation.
+- Retained matched seed-11, 64-step diagnostic runs at
+  `artifacts/phase3/diagnostic_seed_11_on/` and
+  `artifacts/phase3/diagnostic_seed_11_off/`. Both produced three births, no deaths, and a final
+  population of seven. The on config/event hashes are
+  `f3d8821d6301e253ffea552bf93c9fd1ec973146c4e72713a004be380c91a2da` /
+  `aed154d20fb944fc4f4c46326532fd3fd8d86f3c42d7e631fe9af09cd6bd98a8`; the off hashes are
+  `2ff5d4e167296d5317f6e739ff1a1146de014e6cc459905b4cdc85cbcaa12f78` /
+  `63efee757dbcfe25950a0da5c33b38022696df77cde476d2ebfba15f7c32ec13`. This equality is
+  diagnostic only and is not evidence of learning benefit.
+- Changed files for this bounded ticket: `src/worm_world/experiments/learning.py`,
+  `src/worm_world/experiments/__init__.py`, `src/worm_world/learning/controller.py`,
+  `src/worm_world/genetics/__init__.py`, `src/worm_world/cli.py`,
+  `tests/test_learning_experiment.py`, `README.md`, the retained Phase 3 artifacts, and this
+  handoff.
 
 **P3-T02 — versioned heritable brain priors and local three-factor plasticity:**
 
@@ -160,7 +190,7 @@ python -m uv run pytest
 python -m uv run pre-commit validate-config
 ```
 
-Final expected test result: `73 passed`. Coverage includes genome validation/round trips and IDs;
+Final expected test result: `77 passed`. Coverage includes genome validation/round trips and IDs;
 pure phenotype identity/differences; seeded inheritance; compatibility; transitive ancestry;
 asexual and sexual births; reproduction conservation; fair shared-resource competition; stable
 entity/genome snapshots; exactly-once deaths; deterministic event ordering; strict config identity;
@@ -171,16 +201,18 @@ inheritance/mutation, controller prior/state shape and finite-value validation, 
 transitions, exact three-factor update arithmetic, plasticity-off identity, learning-off history
 independence, diagnostic projection, per-entity state isolation, action mapping order independence,
 clean birth initialization, read-only population sensing, strict replay frame loading, immutable
-viewer projection, final-frame identity, and static Canvas export/CLI fidelity.
+viewer projection, final-frame identity, static Canvas export/CLI fidelity, strict learning-config
+identity, matched procedural fixtures, diagnostic ordering/completeness, controller lifecycle,
+deterministic learning artifacts, and tamper detection.
 
 Measured local benchmarks on 2026-07-15:
 
 ```powershell
 python -m uv run python -m worm_world.benchmark --mode sandbox --steps 100000
-# 100000 steps in 0.7975576999597251 s; 125382.77795456024 steps/s
+# 100000 steps in 1.089902300038375 s; 91751.34321349634 steps/s
 
 python -m uv run python -m worm_world.benchmark --mode population --steps 1000
-# 1000 steps with 64 organisms in 1.6043343999190256 s; 623.3114493153499 world steps/s
+# 1000 steps with 64 organisms in 2.0766769000329077 s; 481.5385580607911 world steps/s
 ```
 
 These are local regression measurements, not portable thresholds. The Phase 1 retained replay was
@@ -216,6 +248,9 @@ also re-simulated byte-for-byte with unchanged event hash
     Learned output-weight deltas, eligibility traces, recurrent activations, and prior homeostatic
     readings are lifetime state owned by `learning` and can never enter inheritance. The local
     neuromodulator is a logged genome-weighted sum of energy, hydration, and injury-fraction change.
+11. Phase 3 experiment events are resequenced after composing controller diagnostics with
+    authoritative world events. This preserves a single deterministic total order without giving
+    the controller authority over world state. Realized procedural inputs are stored in config.
 
 ## Known blockers and limitations
 
@@ -225,12 +260,13 @@ also re-simulated byte-for-byte with unchanged event hash
   speciation, learning, or ecological stability.
 - Resource patches remain finite point fields on flat 2.5D terrain. Richer resource dynamics and
   ecology remain Phase 4 work.
-- The Phase 2 fixed action protocol is an experiment input, not an autonomous controller. Phase 3
-  now has lifetime-only recurrent state but still needs local plasticity, evolvable brain priors,
-  diagnostics, and matched held-out learning-on/off evidence without direct task rewards.
-- P3-T02 supplies a plastic learning mechanism, not demonstrated adaptive benefit. It currently
-  updates only hidden-to-output synapses. No learning-benefit or emergence claim is warranted until
-  the matched held-out Phase 3 acceptance suite passes.
+- The Phase 2 fixed action protocol remains an experiment input; the separate Phase 3 runner now
+  uses an autonomous recurrent/plastic controller. Phase 3 still needs predeclared matched held-out
+  learning-on/off evidence without direct task rewards.
+- P3-T03 supplies a replayable plastic learning experiment, not demonstrated adaptive benefit. The
+  retained seed-11 diagnostic conditions have equal births and final population. Plasticity
+  currently updates only hidden-to-output synapses. No learning-benefit or emergence claim is
+  warranted until the matched held-out Phase 3 acceptance suite passes.
 - The Canvas viewer is replay-only: it has no live streaming, terrain height, dynamic ecology, or
   materials. Those require backward-compatible later viewer schemas. Automated direct-file visual
   QA was unavailable because the in-app browser disallows `file:` navigation; exporter fidelity,
@@ -239,16 +275,15 @@ also re-simulated byte-for-byte with unchanged event hash
 
 ## Exact next ticket
 
-**P3-T03 — deterministic learning-on/off experiment and diagnostic artifacts**
+**P3-T04 — predeclared matched held-out evaluation harness**
 
-Add one versioned Phase 3 experiment configuration and headless runner that couples the existing
-`PopulationController` to `PopulationWorld`, records raw energy/hydration/injury changes,
-neuromodulators, update magnitudes, controller outputs, and the plasticity-enabled flag, and writes
-replay-verifiable artifacts. Define matched learning-on and plasticity-off conditions with identical
-version-2 founder genomes, world configuration, named RNG streams, and action interface. Use a small
-procedurally varied training-world fixture but do not tune or claim held-out benefit yet. Do not add
-task rewards, a trainer, new sensors/actions, learned-state inheritance, or modify the retained Phase
-2 experiment. Test strict config identity, learning-on/off matching, diagnostic event ordering,
-action mapping order independence, clean birth/death controller lifecycle, deterministic artifact
-bytes, tamper detection, and every retained replay. Run formatting, lint, strict types, the full
-suite, pre-commit validation, and both benchmarks; then update this handoff.
+Add a versioned suite configuration that locks distinct development and held-out seed lists before
+evaluation, runs matched plasticity-on/off conditions from identical stored version-2 genomes and
+realized world inputs, and reports paired survival, descendant, final-population, and raw
+homeostatic outcomes with deterministic confidence intervals. Define the Phase 3 aggregate pass
+criteria in configuration and report them even when they fail; do not change the plasticity rule or
+tune against held-out outcomes in this ticket. Retain every run's config, raw diagnostic events,
+snapshots, report, and manifest, plus a suite summary that verifies each replay. Test seed-set
+separation, strict suite identity, condition matching, deterministic statistics, honest failed-gate
+reporting, artifact tamper detection, and every retained replay. Run formatting, lint, strict types,
+the full suite, pre-commit validation, and both benchmarks; then update this handoff.

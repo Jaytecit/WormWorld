@@ -9,8 +9,10 @@ from pathlib import Path
 from worm_world.experiments import (
     EvolutionExperimentConfig,
     ExperimentConfig,
+    LearningExperimentConfig,
     SandboxExperimentConfig,
     run_evolution_experiment,
+    run_learning_experiment,
     run_noop_experiment,
     run_sandbox_experiment,
 )
@@ -20,7 +22,9 @@ from worm_world.organisms import WormAction
 def main(argv: Sequence[str] | None = None) -> int:
     """Create a deterministic no-op or single-organism replay artifact."""
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--mode", choices=("noop", "sandbox", "evolution"), default="noop")
+    parser.add_argument(
+        "--mode", choices=("noop", "sandbox", "evolution", "learning"), default="noop"
+    )
     parser.add_argument("--seed", type=int, required=True)
     parser.add_argument("--steps", type=int, required=True)
     parser.add_argument("--output", type=Path, required=True)
@@ -31,6 +35,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--drink", action="store_true")
     parser.add_argument("--rest", action="store_true")
     parser.add_argument("--disable-heritability", action="store_true")
+    parser.add_argument("--disable-plasticity", action="store_true")
     arguments = parser.parse_args(argv)
     if arguments.steps < 0:
         parser.error("--steps must be non-negative")
@@ -42,6 +47,9 @@ def main(argv: Sequence[str] | None = None) -> int:
             artifact_directory=arguments.output.resolve(),
             project_root=arguments.project_root.resolve(),
         )
+        print(artifacts.manifest_path)
+        print(f"event_hash={artifacts.manifest.event_hash}")
+        return 0
     elif arguments.mode == "sandbox":
         action = WormAction(
             forward=arguments.forward,
@@ -55,7 +63,10 @@ def main(argv: Sequence[str] | None = None) -> int:
             artifact_directory=arguments.output.resolve(),
             project_root=arguments.project_root.resolve(),
         )
-    else:
+        print(artifacts.manifest_path)
+        print(f"event_hash={artifacts.manifest.event_hash}")
+        return 0
+    elif arguments.mode == "evolution":
         manifest = run_evolution_experiment(
             EvolutionExperimentConfig(
                 seed=arguments.seed,
@@ -65,11 +76,18 @@ def main(argv: Sequence[str] | None = None) -> int:
             artifact_directory=arguments.output.resolve(),
             project_root=arguments.project_root.resolve(),
         )
-        print(arguments.output.resolve() / "manifest.json")
-        print(f"event_hash={manifest.event_hash}")
-        return 0
-    print(artifacts.manifest_path)
-    print(f"event_hash={artifacts.manifest.event_hash}")
+    else:
+        manifest = run_learning_experiment(
+            LearningExperimentConfig.training_fixture(
+                arguments.seed,
+                plasticity_enabled=not arguments.disable_plasticity,
+                step_count=arguments.steps,
+            ),
+            artifact_directory=arguments.output.resolve(),
+            project_root=arguments.project_root.resolve(),
+        )
+    print(arguments.output.resolve() / "manifest.json")
+    print(f"event_hash={manifest.event_hash}")
     return 0
 
 

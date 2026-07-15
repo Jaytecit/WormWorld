@@ -4,7 +4,8 @@ The Worm World is a deterministic, headless artificial-life research simulator. 
 persistent population, immutable genomes, mutation/recombination, compatibility, sexual and
 asexual reproduction, lineage storage, fair spatial resource competition, diversity reports,
 and byte-verifiable multi-seed evolution experiments. It contains no task rewards, learning,
-hard-coded fitness score, or species rules.
+hard-coded fitness score, or species rules. Phase 3 work adds a lifetime-only recurrent controller,
+heritable brain priors, local homeostasis-modulated plasticity, and replayable learning diagnostics.
 
 ## Requirements
 
@@ -73,6 +74,19 @@ uv run python -m worm_world.benchmark --mode population --steps 1000
 
 The JSON result reports elapsed time and fixed steps per second. It is a local regression
 measurement, not a cross-machine performance guarantee.
+
+## Create a deterministic learning diagnostic replay
+
+```powershell
+uv run python -m worm_world.cli --mode learning --seed 11 --steps 64 `
+  --output artifacts/phase3/diagnostic
+```
+
+The generated fixture stores its procedurally varied resource and founder positions in canonical
+`config.json`. Controller outputs, raw internal-state fractions, changes, neuromodulators, local
+update magnitudes, and the plasticity flag are recorded in the hashed event stream. Add
+`--disable-plasticity` for the matched plasticity-off condition; neither condition uses a task
+reward or trainer.
 
 ## View a recorded population
 

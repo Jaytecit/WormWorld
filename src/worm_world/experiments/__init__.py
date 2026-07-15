@@ -9,6 +9,13 @@ from worm_world.experiments.evolution import (
     simulate_evolution,
     verify_evolution_replay,
 )
+from worm_world.experiments.learning import (
+    LearningExperimentConfig,
+    LearningRunReport,
+    run_learning_experiment,
+    simulate_learning,
+    verify_learning_replay,
+)
 from worm_world.experiments.runner import (
     ReplayArtifacts,
     run_noop_experiment,
@@ -22,15 +29,20 @@ __all__ = [
     "ExperimentConfig",
     "EvolutionExperimentConfig",
     "EvolutionRunReport",
+    "LearningExperimentConfig",
+    "LearningRunReport",
     "ReplayArtifacts",
     "SandboxExperimentConfig",
     "WorldConfig",
     "run_noop_experiment",
     "run_evolution_experiment",
+    "run_learning_experiment",
     "run_phase2_acceptance_suite",
     "run_sandbox_experiment",
     "simulate_sandbox",
     "simulate_evolution",
+    "simulate_learning",
     "verify_evolution_replay",
+    "verify_learning_replay",
     "verify_sandbox_replay",
 ]

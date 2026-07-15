@@ -388,12 +388,34 @@ class PopulationController:
         self.config = config
         self._states: dict[int, ControllerState] = {}
         self._diagnostics: dict[int, PlasticityDiagnostic] = {}
+        self._outputs: dict[int, tuple[float, ...]] = {}
 
     def state(self, entity_id: int) -> ControllerState:
         return self._states[entity_id]
 
     def diagnostic(self, entity_id: int) -> PlasticityDiagnostic:
         return self._diagnostics[entity_id]
+
+    def outputs(self, entity_id: int) -> tuple[float, ...]:
+        return self._outputs[entity_id]
+
+    def synchronize(self, active_entity_ids: set[int]) -> None:
+        """Remove all lifetime state for entities no longer active."""
+        self._states = {
+            entity_id: state
+            for entity_id, state in self._states.items()
+            if entity_id in active_entity_ids
+        }
+        self._diagnostics = {
+            entity_id: diagnostic
+            for entity_id, diagnostic in self._diagnostics.items()
+            if entity_id in active_entity_ids
+        }
+        self._outputs = {
+            entity_id: outputs
+            for entity_id, outputs in self._outputs.items()
+            if entity_id in active_entity_ids
+        }
 
     def decide(
         self,
@@ -403,14 +425,7 @@ class PopulationController:
         if set(sensors) != set(genomes):
             raise ValueError("sensors and genomes must cover the same entities")
         active = set(sensors)
-        self._states = {
-            entity_id: state for entity_id, state in self._states.items() if entity_id in active
-        }
-        self._diagnostics = {
-            entity_id: diagnostic
-            for entity_id, diagnostic in self._diagnostics.items()
-            if entity_id in active
-        }
+        self.synchronize(active)
         actions: dict[int, ControllerAction] = {}
         for entity_id in sorted(active):
             genome = genomes[entity_id]
@@ -433,5 +448,6 @@ class PopulationController:
             )
             self._states[entity_id] = result.state
             self._diagnostics[entity_id] = result.diagnostic
+            self._outputs[entity_id] = result.outputs
             actions[entity_id] = result.action
         return actions
