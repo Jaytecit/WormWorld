@@ -5,13 +5,13 @@
 - **Active phase:** Phase 3 — lifetime learning.
 - **Phase status:** Phase 2 is complete and its exit gate passed on 2026-07-15. Phase 3 is in
   progress; its scientific exit gate has not passed.
-- **Last completed ticket:** P3-T03 — deterministic learning-on/off experiment and diagnostic
-  artifacts. This establishes the replayable matched experiment boundary; it does not claim a
-  held-out population benefit or advance the Phase 3 scientific gate.
+- **Last completed ticket:** P3-T04 — predeclared matched held-out evaluation harness. The harness
+  and retained suite passed their engineering acceptance checks, but the scientific result was a
+  correctly reported failed gate; Phase 3 remains open.
 - **Repository state:** Local Git repository on `main`. The completed Phase 2, P3-T01, viewer
   contract, and Canvas viewer build was committed as `dd23200` on 2026-07-15. P3-T02 was committed
-  as `eafab42`; P3-T03 and this handoff are uncommitted. No remote is configured and GitHub CLI is
-  not installed.
+  as `eafab42` and P3-T03 as `2d201ed`; P3-T04 and this handoff are uncommitted. No remote is
+  configured and GitHub CLI is not installed.
 
 ## Completed viewer scope
 
@@ -35,6 +35,33 @@
   `docs/VIEWER_CONTRACT.md`, and this handoff.
 
 ## Completed Phase 3 scope
+
+**P3-T04 — predeclared matched held-out evaluation harness:**
+
+- Added strict versioned `LearningSuiteConfig` and `LearningGateCriteria` contracts. Development
+  and held-out seeds must be unique and disjoint; the stored founder genome, step/population sizes,
+  bootstrap seed/sample count, confidence level, and pass thresholds are suite inputs.
+- Added paired plasticity-on/off execution for both partitions. Each pair has identical realized
+  world inputs, version-2 founder genome, named RNG streams, sensors/actions, physiology, and
+  reproduction; only `plasticity_enabled` differs.
+- Added deterministic seeded bootstrap intervals for births, final population, final energy,
+  hydration, and injury fractions. Positive differences favor plasticity-on (injury reverses the
+  subtraction direction). The aggregate gate additionally requires paired birth/population wins.
+- Added suite replay verification that verifies every child run byte-for-byte, binds each child
+  manifest back to its locked suite input, recomputes outcomes/statistics, and rejects summary or
+  child-artifact divergence.
+- Retained suite `artifacts/phase3/heldout_evaluation_v1/` uses development seeds `101, 102, 103`,
+  held-out seeds `201, 202, 203, 204, 205`, 64 steps, four founders, 2,000 bootstrap samples, and
+  suite config ID `e7a06719c861ecc099e06117982aabb52aa530811c1006aee75adeddedc69b68`.
+  All 16 child runs replayed byte-for-byte.
+- The predeclared gate result is `acceptance_passed: false`. Held-out birth and final-population
+  paired differences were all zero, with means and 95% intervals `[0.0, 0.0]`; paired win fraction
+  was zero. Mean final energy-fraction advantage was `0.00011296014339794436`, with 95% interval
+  `[0.00008107815248297179, 0.0001391097293124144]`. This small physiological difference is not a
+  survival or descendant benefit and does not pass Phase 3.
+- Changed files for this bounded ticket: `src/worm_world/experiments/learning_suite.py`,
+  `src/worm_world/experiments/learning.py`, `src/worm_world/experiments/__init__.py`,
+  `tests/test_learning_suite.py`, the retained evaluation suite, and this handoff.
 
 **P3-T03 — deterministic learning-on/off experiment and diagnostic artifacts:**
 
@@ -190,7 +217,7 @@ python -m uv run pytest
 python -m uv run pre-commit validate-config
 ```
 
-Final expected test result: `77 passed`. Coverage includes genome validation/round trips and IDs;
+Final expected test result: `80 passed`. Coverage includes genome validation/round trips and IDs;
 pure phenotype identity/differences; seeded inheritance; compatibility; transitive ancestry;
 asexual and sexual births; reproduction conservation; fair shared-resource competition; stable
 entity/genome snapshots; exactly-once deaths; deterministic event ordering; strict config identity;
@@ -204,15 +231,18 @@ clean birth initialization, read-only population sensing, strict replay frame lo
 viewer projection, final-frame identity, static Canvas export/CLI fidelity, strict learning-config
 identity, matched procedural fixtures, diagnostic ordering/completeness, controller lifecycle,
 deterministic learning artifacts, and tamper detection.
+P3-T04 additions cover locked/disjoint seed partitions, strict suite identity, exact condition
+matching, deterministic paired bootstrap intervals, honest failed-gate reporting, child-manifest
+binding, full-suite replay, and tamper rejection.
 
 Measured local benchmarks on 2026-07-15:
 
 ```powershell
 python -m uv run python -m worm_world.benchmark --mode sandbox --steps 100000
-# 100000 steps in 1.089902300038375 s; 91751.34321349634 steps/s
+# 100000 steps in 1.487979100085795 s; 67205.24501603156 steps/s
 
 python -m uv run python -m worm_world.benchmark --mode population --steps 1000
-# 1000 steps with 64 organisms in 2.0766769000329077 s; 481.5385580607911 world steps/s
+# 1000 steps with 64 organisms in 2.9198542999802157 s; 342.48284238250375 world steps/s
 ```
 
 These are local regression measurements, not portable thresholds. The Phase 1 retained replay was
@@ -251,6 +281,9 @@ also re-simulated byte-for-byte with unchanged event hash
 11. Phase 3 experiment events are resequenced after composing controller diagnostics with
     authoritative world events. This preserves a single deterministic total order without giving
     the controller authority over world state. Realized procedural inputs are stored in config.
+12. Phase 3 evaluation uses development seeds only for mechanism work. Once a held-out seed is run,
+    it remains reported evidence and cannot be reused for tuning. Gate thresholds and bootstrap
+    settings are serialized before evaluation; a failed gate is a valid engineering outcome.
 
 ## Known blockers and limitations
 
@@ -267,6 +300,9 @@ also re-simulated byte-for-byte with unchanged event hash
   retained seed-11 diagnostic conditions have equal births and final population. Plasticity
   currently updates only hidden-to-output synapses. No learning-benefit or emergence claim is
   warranted until the matched held-out Phase 3 acceptance suite passes.
+- The first locked held-out suite failed with zero birth/population advantage across all five
+  seeds. Seeds `201`–`205` are consumed held-out evidence and must not be used for P3-T05 tuning or
+  a later confirmatory gate. Only development seeds `101`–`103` may inform the next mechanism work.
 - The Canvas viewer is replay-only: it has no live streaming, terrain height, dynamic ecology, or
   materials. Those require backward-compatible later viewer schemas. Automated direct-file visual
   QA was unavailable because the in-app browser disallows `file:` navigation; exporter fidelity,
@@ -275,15 +311,17 @@ also re-simulated byte-for-byte with unchanged event hash
 
 ## Exact next ticket
 
-**P3-T04 — predeclared matched held-out evaluation harness**
+**P3-T05 — development-only plasticity sensitivity and causal action divergence**
 
-Add a versioned suite configuration that locks distinct development and held-out seed lists before
-evaluation, runs matched plasticity-on/off conditions from identical stored version-2 genomes and
-realized world inputs, and reports paired survival, descendant, final-population, and raw
-homeostatic outcomes with deterministic confidence intervals. Define the Phase 3 aggregate pass
-criteria in configuration and report them even when they fail; do not change the plasticity rule or
-tune against held-out outcomes in this ticket. Retain every run's config, raw diagnostic events,
-snapshots, report, and manifest, plus a suite summary that verifies each replay. Test seed-set
-separation, strict suite identity, condition matching, deterministic statistics, honest failed-gate
-reporting, artifact tamper detection, and every retained replay. Run formatting, lint, strict types,
-the full suite, pre-commit validation, and both benchmarks; then update this handoff.
+Using only development seeds `101, 102, 103` and their retained diagnostics, add a deterministic
+analysis that identifies whether learned output-weight changes causally alter controller outputs
+and executed actions before reproduction opportunities. Add one independently configurable,
+genome-encoded plasticity sensitivity parameter only if the analysis demonstrates that bounded
+updates are systematically too small to affect actions; do not hand-code resource actions or use
+births, food, position, or task completion as a neuromodulator. Compare each candidate against
+plasticity-off and zero-rate controls on development seeds only, save diagnostic/ablation artifacts,
+and do not run seeds `201`–`205` or any new held-out seeds. Pre-register a fresh confirmatory seed
+set and unchanged Phase 3 gate criteria for the following ticket, but do not execute it. Test causal
+action divergence, bounded updates, zero-rate identity, lifetime reset, replay bytes, and all prior
+artifacts. Run formatting, lint, strict types, the full suite, pre-commit validation, and both
+benchmarks; then update this handoff.

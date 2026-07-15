@@ -16,6 +16,12 @@ from worm_world.experiments.learning import (
     simulate_learning,
     verify_learning_replay,
 )
+from worm_world.experiments.learning_suite import (
+    LearningGateCriteria,
+    LearningSuiteConfig,
+    run_learning_evaluation_suite,
+    verify_learning_evaluation_suite,
+)
 from worm_world.experiments.runner import (
     ReplayArtifacts,
     run_noop_experiment,
@@ -30,13 +36,16 @@ __all__ = [
     "EvolutionExperimentConfig",
     "EvolutionRunReport",
     "LearningExperimentConfig",
+    "LearningGateCriteria",
     "LearningRunReport",
+    "LearningSuiteConfig",
     "ReplayArtifacts",
     "SandboxExperimentConfig",
     "WorldConfig",
     "run_noop_experiment",
     "run_evolution_experiment",
     "run_learning_experiment",
+    "run_learning_evaluation_suite",
     "run_phase2_acceptance_suite",
     "run_sandbox_experiment",
     "simulate_sandbox",
@@ -44,5 +53,6 @@ __all__ = [
     "simulate_learning",
     "verify_evolution_replay",
     "verify_learning_replay",
+    "verify_learning_evaluation_suite",
     "verify_sandbox_replay",
 ]

@@ -117,6 +117,7 @@ class LearningExperimentConfig:
         plasticity_enabled: bool,
         founder_count: int = 4,
         step_count: int = 64,
+        founder_genome: Genome | None = None,
     ) -> LearningExperimentConfig:
         """Create a small varied world whose realized inputs are stored in the config."""
         if isinstance(founder_count, bool) or founder_count < 1:
@@ -142,7 +143,14 @@ class LearningExperimentConfig:
             eat_rate=0.5,
             drink_rate=0.5,
         )
-        return cls(seed, plasticity_enabled, positions, step_count=step_count, resources=resources)
+        return cls(
+            seed,
+            plasticity_enabled,
+            positions,
+            step_count=step_count,
+            resources=resources,
+            founder_genome=_default_genome() if founder_genome is None else founder_genome,
+        )
 
     def to_json(self) -> str:
         values = asdict(self)
@@ -196,8 +204,21 @@ class LearningRunReport:
     total_update_l1: float
     maximum_learned_weight_l1: float
 
+    def to_dict(self) -> dict[str, JsonValue]:
+        return cast(dict[str, JsonValue], asdict(self))
+
     def to_json(self) -> str:
         return json.dumps(asdict(self), sort_keys=True, separators=(",", ":"), allow_nan=False)
+
+    @classmethod
+    def from_json(cls, serialized: str) -> LearningRunReport:
+        decoded: object = json.loads(serialized)
+        if not isinstance(decoded, dict):
+            raise ValueError("learning report must be an object")
+        values = cast(dict[str, Any], decoded)
+        if set(values) != set(asdict(cls(0, False, 0, 0, 0, 0, 0.0, 0.0))):
+            raise ValueError("learning report has missing or unknown fields")
+        return cls(**values)
 
 
 @dataclass(frozen=True, slots=True)
