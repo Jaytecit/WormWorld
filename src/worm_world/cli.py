@@ -18,7 +18,7 @@ from worm_world.organisms import WormAction
 def main(argv: Sequence[str] | None = None) -> int:
     """Create a deterministic no-op or single-organism replay artifact."""
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--mode", choices=("noop", "sandbox"), default="sandbox")
+    parser.add_argument("--mode", choices=("noop", "sandbox"), default="noop")
     parser.add_argument("--seed", type=int, required=True)
     parser.add_argument("--steps", type=int, required=True)
     parser.add_argument("--output", type=Path, required=True)

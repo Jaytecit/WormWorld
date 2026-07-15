@@ -109,10 +109,14 @@ def test_dead_organism_stops_acting_and_does_not_emit_a_second_death() -> None:
 
 
 def test_snapshot_contains_segmented_body_resources_sensors_and_accounting() -> None:
-    snapshot = make_world().snapshot()
+    world = make_world(timestep=0.05)
+    for _ in range(70):
+        world.advance(WormAction())
+    snapshot = world.snapshot()
     organism = snapshot.state["organism"]
 
     assert isinstance(organism, dict)
+    assert organism["age_seconds"] == snapshot.elapsed_seconds == 3.5
     segments = organism["segments"]
     assert isinstance(segments, list)
     assert len(segments) == 4

@@ -292,6 +292,7 @@ class SandboxWorld:
         self.energy_dissipated += delta.energy_dissipated
         self.hydration_dissipated += delta.hydration_dissipated
         self._step_index += 1
+        physiology.age_seconds = self.elapsed_seconds
         return StepResult(
             distance_moved=distance_moved,
             food_removed=food_removed,
