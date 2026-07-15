@@ -5,11 +5,12 @@
 - **Active phase:** Phase 3 — lifetime learning.
 - **Phase status:** Phase 2 is complete and its exit gate passed on 2026-07-15. Phase 3 is in
   progress; its scientific exit gate has not passed.
-- **Last completed ticket:** V-T01 — read-only static Canvas population replay viewer. This was
-  an explicitly requested presentation ticket; it does not advance the Phase 3 scientific gate.
-- **Repository state:** Local Git repository on `main`. The complete Phase 2 change is
-  uncommitted, as are the current Phase 3, viewer-contract, and Canvas-viewer additions. No remote
-  is configured and GitHub CLI is not installed.
+- **Last completed ticket:** P3-T02 — versioned heritable brain priors and local three-factor
+  plasticity. This establishes the learning mechanism and ablation contract; it does not claim a
+  population benefit or advance the Phase 3 scientific gate.
+- **Repository state:** Local Git repository on `main`. The completed Phase 2, P3-T01, viewer
+  contract, and Canvas viewer build was committed as `dd23200` on 2026-07-15. P3-T02 and this
+  handoff are uncommitted. No remote is configured and GitHub CLI is not installed.
 
 ## Completed viewer scope
 
@@ -33,6 +34,28 @@
   `docs/VIEWER_CONTRACT.md`, and this handoff.
 
 ## Completed Phase 3 scope
+
+**P3-T02 — versioned heritable brain priors and local three-factor plasticity:**
+
+- Added a strict version-2 genome that contains explicit flattened recurrent-controller priors,
+  hidden width, plasticity rate, eligibility-trace decay, and genome-parameterized energy,
+  hydration, and injury modulation coefficients. Version-1 JSON, genome IDs, Phase 2 experiment
+  configuration bytes, and retained replay bytes remain unchanged.
+- Added seeded recombination and bounded mutation for all version-2 brain values. Parents must use
+  the same schema and brain width; offspring inherit only initial priors and learning coefficients.
+- Added deterministic local output-synapse updates of the form `rate × homeostatic change × prior
+  eligibility trace`. The modulator uses only changes in the three existing raw internal sensor
+  fractions. No task reward, trainer, new sensor, action, objective, or learned-state inheritance
+  was added.
+- Added lifetime-only learned weight deltas, eligibility traces, previous homeostatic readings, and
+  per-entity diagnostics. These are clean for founders and births, removed with inactive entities,
+  and absent from genomes, lineage records, authoritative snapshots, and reproduction.
+- Added a plasticity-off runtime ablation that is action/output-identical to a matched zero-rate
+  control while retaining the same priors, recurrence, sensors, and trace arithmetic.
+- Changed files for this bounded ticket: `src/worm_world/genetics/genome.py`,
+  `src/worm_world/genetics/__init__.py`, `src/worm_world/learning/controller.py`,
+  `src/worm_world/learning/__init__.py`, `src/worm_world/experiments/evolution.py`,
+  `tests/test_genetics.py`, `tests/test_learning_controller.py`, and this handoff.
 
 **P3-T01 — deterministic recurrent controller contract and clean lifetime initialization:**
 
@@ -137,25 +160,27 @@ python -m uv run pytest
 python -m uv run pre-commit validate-config
 ```
 
-Final expected test result: `68 passed`. Coverage includes genome validation/round trips and IDs;
+Final expected test result: `73 passed`. Coverage includes genome validation/round trips and IDs;
 pure phenotype identity/differences; seeded inheritance; compatibility; transitive ancestry;
 asexual and sexual births; reproduction conservation; fair shared-resource competition; stable
 entity/genome snapshots; exactly-once deaths; deterministic event ordering; strict config identity;
 multi-seed acceptance; artifact tamper/replay checks; and every retained Phase 0/1 test.
 
-Phase 3 additions cover controller prior/state shape and finite-value validation, deterministic
-bounded transitions, learning-off history independence, per-entity state isolation, action mapping
-order independence, clean birth initialization, read-only population sensing, strict replay frame
-loading, immutable viewer projection, final-frame identity, and static Canvas export/CLI fidelity.
+Phase 3 additions cover frozen version-1 identity, strict version-2 brain round trips, bounded brain
+inheritance/mutation, controller prior/state shape and finite-value validation, deterministic bounded
+transitions, exact three-factor update arithmetic, plasticity-off identity, learning-off history
+independence, diagnostic projection, per-entity state isolation, action mapping order independence,
+clean birth initialization, read-only population sensing, strict replay frame loading, immutable
+viewer projection, final-frame identity, and static Canvas export/CLI fidelity.
 
 Measured local benchmarks on 2026-07-15:
 
 ```powershell
 python -m uv run python -m worm_world.benchmark --mode sandbox --steps 100000
-# 100000 steps in 0.7992888999870047 s; 125111.20822724531 steps/s
+# 100000 steps in 0.7975576999597251 s; 125382.77795456024 steps/s
 
 python -m uv run python -m worm_world.benchmark --mode population --steps 1000
-# 1000 steps with 64 organisms in 1.5989233000436798 s; 625.4208691390523 world steps/s
+# 1000 steps with 64 organisms in 1.6043343999190256 s; 623.3114493153499 world steps/s
 ```
 
 These are local regression measurements, not portable thresholds. The Phase 1 retained replay was
@@ -187,6 +212,10 @@ also re-simulated byte-for-byte with unchanged event hash
 9. The version-1 graphical viewer uses the browser's Canvas 2D API with no runtime dependency or
    server. Export is explicit and refuses an existing directory, preserving recorded artifacts and
    prior viewer exports.
+10. Genome version 2 stores concrete initial controller weights and plasticity coefficients.
+    Learned output-weight deltas, eligibility traces, recurrent activations, and prior homeostatic
+    readings are lifetime state owned by `learning` and can never enter inheritance. The local
+    neuromodulator is a logged genome-weighted sum of energy, hydration, and injury-fraction change.
 
 ## Known blockers and limitations
 
@@ -199,8 +228,9 @@ also re-simulated byte-for-byte with unchanged event hash
 - The Phase 2 fixed action protocol is an experiment input, not an autonomous controller. Phase 3
   now has lifetime-only recurrent state but still needs local plasticity, evolvable brain priors,
   diagnostics, and matched held-out learning-on/off evidence without direct task rewards.
-- P3-T01 recurrence is memory capacity, not demonstrated learning. No learning-benefit or emergence
-  claim is warranted until the Phase 3 acceptance suite passes.
+- P3-T02 supplies a plastic learning mechanism, not demonstrated adaptive benefit. It currently
+  updates only hidden-to-output synapses. No learning-benefit or emergence claim is warranted until
+  the matched held-out Phase 3 acceptance suite passes.
 - The Canvas viewer is replay-only: it has no live streaming, terrain height, dynamic ecology, or
   materials. Those require backward-compatible later viewer schemas. Automated direct-file visual
   QA was unavailable because the in-app browser disallows `file:` navigation; exporter fidelity,
@@ -209,16 +239,16 @@ also re-simulated byte-for-byte with unchanged event hash
 
 ## Exact next ticket
 
-**P3-T02 — versioned heritable brain priors and local three-factor plasticity**
+**P3-T03 — deterministic learning-on/off experiment and diagnostic artifacts**
 
-Add a backward-compatible version-2 genome representation for explicit controller priors,
-plasticity rate, eligibility-trace decay, and genome-parameterized homeostatic modulation. Preserve
-strict version-1 parsing and every retained Phase 2 replay byte. Implement deterministic local
-three-factor weight updates using only logged changes in raw internal energy, hydration, and injury;
-keep learned weights and traces lifetime-only and clean at every birth. Add a plasticity-off control
-that is otherwise identical. Do not add a task reward, trainer, new sensors/actions, learned-state
-inheritance, or a claim of population benefit. Test v1/v2 round trips and IDs, inheritance and
-mutation bounds, clean birth/reset behavior, plasticity-off identity, update arithmetic, action-order
-independence, diagnostic logging, replay determinism, and retained artifact verification. Run
-formatting, lint, strict types, the full suite, all retained replays, and both benchmarks; then update
-this handoff.
+Add one versioned Phase 3 experiment configuration and headless runner that couples the existing
+`PopulationController` to `PopulationWorld`, records raw energy/hydration/injury changes,
+neuromodulators, update magnitudes, controller outputs, and the plasticity-enabled flag, and writes
+replay-verifiable artifacts. Define matched learning-on and plasticity-off conditions with identical
+version-2 founder genomes, world configuration, named RNG streams, and action interface. Use a small
+procedurally varied training-world fixture but do not tune or claim held-out benefit yet. Do not add
+task rewards, a trainer, new sensors/actions, learned-state inheritance, or modify the retained Phase
+2 experiment. Test strict config identity, learning-on/off matching, diagnostic event ordering,
+action mapping order independence, clean birth/death controller lifecycle, deterministic artifact
+bytes, tamper detection, and every retained replay. Run formatting, lint, strict types, the full
+suite, pre-commit validation, and both benchmarks; then update this handoff.

@@ -113,6 +113,8 @@ class EvolutionExperimentConfig:
     def to_json(self) -> str:
         values = asdict(self)
         values["reproduction"]["heritability_enabled"] = self.heritability_enabled
+        values["low_metabolism_genome"] = self.low_metabolism_genome.to_dict()
+        values["high_metabolism_genome"] = self.high_metabolism_genome.to_dict()
         return json.dumps(values, sort_keys=True, separators=(",", ":"), allow_nan=False)
 
     @property

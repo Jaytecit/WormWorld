@@ -22,6 +22,19 @@ def test_genome_is_canonical_and_maps_traits_to_founder() -> None:
     assert phenotype.physiology.basal_energy_rate == 0.05
 
 
+def test_version_1_identity_is_retained_and_version_2_round_trips() -> None:
+    version1 = Genome()
+    assert version1.genome_id == "ee3ef0b954712e867ac1209dc1949f742900f96a701f435e9c141af9e50ea95d"
+    assert "brain_priors" not in version1.to_json()
+
+    version2 = Genome.version2(version1, hidden_size=4)
+    restored = Genome.from_json(version2.to_json())
+    assert restored == version2
+    assert restored.genome_id == version2.genome_id != version1.genome_id
+    assert restored.brain_hidden_size == 4
+    assert len(restored.brain_priors or ()) == 90
+
+
 def test_genome_validation_and_strict_fields() -> None:
     with pytest.raises(ValueError, match="segment_count"):
         Genome(segment_count=1)
@@ -41,6 +54,35 @@ def test_inheritance_is_seeded_and_mutation_can_be_disabled() -> None:
     assert child_a.basal_energy_rate in {0.1, 0.4}
     assert compatible(first, first, 0.0)
     assert not compatible(first, Genome(segment_count=32, max_speed=5.0), 0.01)
+
+
+def test_version_2_inheritance_and_mutation_stay_in_declared_bounds() -> None:
+    first = Genome.version2(Genome(mutation_scale=0.5), hidden_size=3)
+    second = Genome.version2(
+        Genome(max_speed=2.0, mutation_scale=0.5),
+        hidden_size=3,
+        plasticity_rate=0.08,
+        eligibility_trace_decay=0.2,
+    )
+    unmutated = inherit_genome(first, second, random.Random(4), mutation_enabled=False)
+    assert unmutated.schema_version == 2
+    assert unmutated.brain_priors is not None
+    assert all(
+        value in {left, right}
+        for value, left, right in zip(
+            unmutated.brain_priors,
+            first.brain_priors or (),
+            second.brain_priors or (),
+            strict=True,
+        )
+    )
+    for seed in range(20):
+        child = inherit_genome(first, second, random.Random(seed), mutation_enabled=True)
+        assert child.brain_priors is not None
+        assert all(-1.0 <= value <= 1.0 for value in child.brain_priors)
+        assert child.plasticity_rate is not None and 0.0 <= child.plasticity_rate <= 0.1
+        assert child.eligibility_trace_decay is not None
+        assert 0.0 <= child.eligibility_trace_decay <= 1.0
 
 
 def test_lineage_storage_is_ordered_idempotent_and_transitive() -> None:
