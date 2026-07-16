@@ -19,6 +19,7 @@ from worm_world.organisms import (
 )
 from worm_world.rng import NamedRandomStreams
 from worm_world.schemas import JsonValue, SimulationEvent, WorldSnapshot
+from worm_world.world.detritus import DetritusConfig, DetritusPool, DetritusTransfer
 from worm_world.world.plants import PlantGrowth, PlantPatch, PlantPatchConfig
 from worm_world.world.sandbox import InitialOrganismConfig, ResourceFieldConfig
 
@@ -120,6 +121,7 @@ class PopulationWorld:
         reproduction_config: ReproductionConfig,
         founders: Sequence[Founder],
         plant_config: PlantPatchConfig | None = None,
+        detritus_config: DetritusConfig | None = None,
         initial_event_sequence: int = 0,
     ) -> None:
         if not founders:
@@ -153,6 +155,11 @@ class PopulationWorld:
                 world_width=world_config.width_meters,
                 world_height=world_config.height_meters,
             )
+        self.detritus_pool: DetritusPool | None = None
+        if detritus_config is not None and detritus_config.enabled:
+            if self.plant_patch is None:
+                raise ValueError("detritus recycling requires an enabled plant patch")
+            self.detritus_pool = DetritusPool(detritus_config)
         self.energy_dissipated = 0.0
         self.hydration_dissipated = 0.0
         self.birth_count = 0
@@ -409,6 +416,14 @@ class PopulationWorld:
                 deaths.append(entity_id)
         self._step_index = next_step
         for entity_id in deaths:
+            state = self.population.state(entity_id)
+            physical_biomass = state.physiology.energy
+            transfer: DetritusTransfer | None = None
+            if self.detritus_pool is not None:
+                transfer = self.detritus_pool.transfer_from_death(physical_biomass)
+                self.energy_dissipated += transfer.energy_unrecovered
+                state.physiology.energy = 0.0
+                self.population.update(entity_id, state)
             self.population.tombstone(entity_id)
             self.lineages.mark_death(entity_id, self._step_index)
             self.death_count += 1
@@ -419,6 +434,37 @@ class PopulationWorld:
                     {
                         "genome_id": self._genome_by_entity[entity_id],
                         "lineage_id": self.lineages.record(entity_id).lineage_id,
+                    },
+                )
+            )
+            if transfer is not None:
+                assert self.detritus_pool is not None
+                events.append(
+                    self._event(
+                        "detritus.transfer",
+                        entity_id,
+                        {
+                            "biomass_transferred": transfer.biomass_transferred,
+                            "detritus_after": self.detritus_pool.detritus,
+                            "energy_unrecovered": transfer.energy_unrecovered,
+                            "physical_biomass": transfer.physical_biomass,
+                        },
+                    )
+                )
+        if self.detritus_pool is not None:
+            assert self.plant_patch is not None
+            decay = self.detritus_pool.decay(dt)
+            self.plant_patch.receive_nutrients(decay.nutrients_returned)
+            events.append(
+                self._event(
+                    "detritus.step",
+                    0,
+                    {
+                        "decay_loss": decay.decay_loss,
+                        "detritus_after": self.detritus_pool.detritus,
+                        "detritus_before": decay.detritus_before,
+                        "nutrients_returned": decay.nutrients_returned,
+                        "plant_nutrients_after": self.plant_patch.nutrients,
                     },
                 )
             )
@@ -607,6 +653,8 @@ class PopulationWorld:
         }
         if self.plant_patch is not None:
             resources["plant_patch"] = self.plant_patch.state_dict()
+        if self.detritus_pool is not None:
+            resources["detritus"] = self.detritus_pool.state_dict()
         return {
             "accounting": {
                 "energy_dissipated": self.energy_dissipated,

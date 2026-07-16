@@ -4,17 +4,38 @@
 
 - **Active phase:** Phase 4 — stable ecology.
 - **Phase status:** Phase 3 completed and its frozen lifetime-learning exit gate passed on
-  2026-07-15. Phase 4 is in progress: its first bounded world mechanism is complete, but no stable
-  ecology or population-persistence gate has yet been run.
-- **Last completed ticket:** P4-T01 — deterministic resource-limited plant biomass field. An
-  opt-in world-owned plant patch now converts explicitly deducted finite light, water, and
-  nutrients into bounded edible biomass and uses the existing fair simultaneous feeding path.
-- **Repository state:** Local Git repository on `main`, eleven commits ahead of configured
-  `origin`. P3-T10, P3-T11, and the Phase 3 viewer follow-up were committed as `0315ffa`; P4-T01
-  is the current commit, both completed on 2026-07-15. GitHub CLI is not installed; no push was
-  attempted.
+  2026-07-15. Phase 4 is in progress: plant biomass and detritus recycling mechanisms are complete,
+  but no stable ecology or population-persistence gate has yet been run.
+- **Last completed ticket:** P4-T02 — deterministic detritus and nutrient recycling. An opt-in
+  world-owned detritus pool receives a documented fraction of each newly dead organism's remaining
+  physiological energy and converts it into the plant patch nutrient store at a bounded fixed-step
+  decay rate.
+- **Repository state:** Local Git repository on `main`, with P4-T01 committed as `b8776d0` and
+  P4-T02 currently uncommitted. GitHub CLI is not installed; no push was attempted.
 
 ## Completed Phase 4 scope
+
+**P4-T02 — deterministic detritus and nutrient recycling:**
+
+- Added strict canonical `DetritusConfig` identity and a world-owned `DetritusPool`. Physical
+  biomass of a newly dead organism is defined as its remaining physiological energy at the death
+  transition; `death_biomass_fraction` of that value transfers exactly once, and the unrecovered
+  remainder is recorded as energy dissipated with tombstone energy cleared to avoid double counts.
+- Enabled detritus requires an enabled P4-T01 plant patch. Fixed-step decay removes a bounded
+  detritus amount and returns `decay_loss × nutrients_per_detritus` through `PlantPatch.receive_nutrients`.
+- Added auditable `detritus.transfer` events per death and one `detritus.step` event per enabled
+  step. Enabled snapshots include a detached detritus projection; disabled/default-off configuration
+  adds no fields or events and preserves historical plant-enabled and legacy bytes.
+- Added deterministic tests for no-death/no-transfer, exactly-once death transfer, bounded decay,
+  nutrient return, mass/energy accounting, simultaneous deaths, strict config identity, default-off
+  replay identity, snapshot projection, and plant-requirement rejection. Added a matching
+  detritus-enabled population benchmark.
+- This is only a recycling mechanism. Light and water remain finite non-recharging plant inputs, so
+  persistence, descendant replacement, diversity, and seasonal robustness are not established.
+- Changed files: `src/worm_world/world/detritus.py`, `src/worm_world/world/plants.py`,
+  `src/worm_world/world/population.py`, `src/worm_world/world/__init__.py`,
+  `src/worm_world/benchmark.py`, `tests/test_detritus.py`, `tests/test_benchmark.py`, and this
+  handoff.
 
 **P4-T01 — deterministic resource-limited plant biomass field:**
 
@@ -415,18 +436,18 @@ that the Phase 2 work was uncommitted when generated.
 
 ## Verification and performance
 
-The final CI-equivalent checks passed on Windows 11 with CPython 3.12.13 and `uv` 0.11.28:
+The final CI-equivalent checks passed on Windows 11 with CPython 3.12.13 using the locked `.venv`
+executables (`uv` was not on `PATH` for this session; the lockfile was not changed):
 
 ```powershell
-python -m uv sync --locked
-python -m uv run ruff format --check .
-python -m uv run ruff check .
-python -m uv run pyright
-python -m uv run pytest
-python -m uv run pre-commit validate-config
+.\.venv\Scripts\ruff.exe format --check .
+.\.venv\Scripts\ruff.exe check .
+.\.venv\Scripts\pyright.exe --pythonpath .\.venv\Scripts\python.exe
+.\.venv\Scripts\python.exe -m pytest
+.\.venv\Scripts\python.exe -m pre_commit validate-config
 ```
 
-Final test result: `102 passed` in 31.37 seconds. Coverage includes genome validation/round trips and IDs;
+Final test result: `113 passed` in 35.82 seconds. Coverage includes genome validation/round trips and IDs;
 pure phenotype identity/differences; seeded inheritance; compatibility; transitive ancestry;
 asexual and sexual births; reproduction conservation; fair shared-resource competition; stable
 entity/genome snapshots; exactly-once deaths; deterministic event ordering; strict config identity;
@@ -469,23 +490,27 @@ Phase 3 frame projection, browser playback/final-state visual QA, and clean brow
 P4-T01 additions cover strict plant config identity, no-input/no-growth, capacity and input-limited
 growth, explicit uptake, fair simultaneous consumption, energy/lifecycle accounting, default-off
 historical identity, detached snapshot projection, invalid mixed food-source rejection, and a
-plant-enabled benchmark. Production-code strict type checking reports zero errors. All 186 retained
-replays re-simulated byte-for-byte: 1 no-op, 1 sandbox, 6 evolution, and 178 learning runs.
-The current desktop shell did not expose `uv` on `PATH`, so the locked existing `.venv` executables
-were used directly for this session's checks; the repository lockfile was not changed.
+plant-enabled benchmark.
+P4-T02 additions cover strict detritus config identity, no-death/no-transfer, exactly-once death
+transfer, bounded decay, nutrient return into the plant patch, mass/energy accounting, simultaneous
+death order, default-off historical identity, detached snapshot projection, plant-requirement
+rejection, and a detritus-enabled benchmark. Production-code strict type checking reports zero
+errors. All 186 retained replays re-simulated byte-for-byte: 1 no-op, 1 sandbox, 6 evolution, and
+178 learning runs.
 
-Measured local benchmarks on 2026-07-15:
+Measured local benchmarks on 2026-07-16:
 
 ```powershell
-python -m uv run python -m worm_world.benchmark --mode sandbox --steps 100000
-# 100000 steps in 1.0305192999076098 s; 97038.45431033208 steps/s
+.\.venv\Scripts\python.exe -m worm_world.benchmark --mode population --steps 1000
+# 1000 steps with 64 organisms in 1.9652899000793695 s; 508.83078367197345 world steps/s
 
-python -m uv run python -m worm_world.benchmark --mode population --steps 1000
-# 1000 steps with 64 organisms in 1.8505469999508932 s; 540.3807631076305 world steps/s
+.\.venv\Scripts\python.exe -m worm_world.benchmark --mode plants --steps 1000
+# 1000 plant-enabled steps with 64 organisms in 2.1416869999375194 s;
+# 466.92163702220427 world steps/s
 
-python -m uv run python -m worm_world.benchmark --mode plants --steps 1000
-# 1000 plant-enabled steps with 64 organisms in 1.739423600025475 s;
-# 574.9030885779372 world steps/s
+.\.venv\Scripts\python.exe -m worm_world.benchmark --mode detritus --steps 1000
+# 1000 plant+detritus steps with 64 organisms in 2.0653858999721706 s;
+# 484.17102102492044 world steps/s
 ```
 
 These are local regression measurements, not portable thresholds. The Phase 1 retained replay was
@@ -562,6 +587,11 @@ also re-simulated byte-for-byte with unchanged event hash
 22. An enabled plant patch is the sole food pool for that population world. It exposes biomass
     through the existing sensing/eating interface and fair allocator; combining it with legacy
     static food is rejected until a future version defines multiple-patch sensing and allocation.
+23. Detritus recycling is world-owned, fixed-step, and opt-in. Physical biomass at death equals
+    remaining physiological energy; only the configured fraction enters the detritus pool, the
+    unrecovered remainder is dissipated, and tombstone energy is cleared when recycling is enabled.
+    Enabled detritus requires an enabled plant patch and never creates organism energy, scavenger
+    actions, controller inputs, rewards, or respawn.
 
 ## Known blockers and limitations
 
@@ -570,8 +600,10 @@ also re-simulated byte-for-byte with unchanged event hash
   world. It establishes the Phase 2 inheritance gate but is not evidence of open-ended evolution,
   speciation, learning, or ecological stability.
 - Resource patches remain finite point fields on flat 2.5D terrain. Richer resource dynamics and
-  ecology remain Phase 4 work. P4-T01 plants grow from finite local stores with no replenishment,
-  decay, recycling, light cycle, or seasonal forcing, so persistence is not yet expected.
+  ecology remain Phase 4 work. P4-T01 plants grow from finite local light/water/nutrient stores;
+  P4-T02 can recycle dead organism energy into nutrients, but light and water still have no
+  recharge, diurnal cycle, or seasonal forcing, so persistence is not yet expected. Starvation
+  deaths with zero remaining energy transfer no detritus under the documented biomass definition.
 - The Phase 2 fixed action protocol remains an experiment input; Phase 3 separately established a
   held-out lifetime-survival advantage for the autonomous recurrent/plastic controller. Plasticity
   currently updates only hidden-to-output synapses; broader learning or emergence claims remain
@@ -594,16 +626,16 @@ also re-simulated byte-for-byte with unchanged event hash
 
 ## Exact next ticket
 
-**P4-T02 — deterministic detritus and nutrient recycling**
+**P4-T03 — deterministic plant light cycle and local water recharge**
 
-Add one independently configurable world-owned detritus pool that receives the documented physical
-biomass fraction of newly dead organisms and converts it into the P4-T01 plant patch's local nutrient
-store at a bounded fixed-step decay rate. Default it off so every Phase 1–P4-T01 configuration and
-replay remains byte-identical. Do not create energy, revive organisms, add scavenger behavior,
-controller inputs, rewards, fitness scores, arbitrary respawn, seasons, or viewer authority. Record
-death-to-detritus transfer, decay loss, and nutrient return so the full lifecycle is auditable. Add
-deterministic tests for no-death/no-detritus, exactly-once death transfer, bounded decay, nutrient
-return, mass/energy accounting, simultaneous deaths, strict config identity, default-off replay,
-snapshot projection, and benchmark comparison. Run formatting, lint, strict types, the full suite,
-pre-commit validation, population/ecology benchmarks, and every retained replay; update this handoff
-without claiming a stable ecology until descendant replacement passes a later multi-seed gate.
+Add one independently configurable world-owned environmental driver that recharges the enabled
+P4-T01 plant patch's light and local water stores on a fixed-step schedule (for example a bounded
+diurnal light pulse and a capped local water recharge rate). Default it off so every Phase 1–P4-T02
+configuration and replay remains byte-identical. Do not add seasons-as-curriculum, arbitrary food
+respawn, scavenger behavior, controller inputs, rewards, fitness scores, or viewer authority.
+Record recharge amounts and post-step light/water levels so the plant–detritus cycle is auditable.
+Add deterministic tests for disabled identity, bounded recharge, capacity caps, interaction with
+plant growth and detritus nutrient return, strict config identity, snapshot projection, and
+benchmark comparison. Run formatting, lint, strict types, the full suite, pre-commit validation,
+population/ecology benchmarks, and every retained replay; update this handoff without claiming a
+stable ecology until descendant replacement passes a later multi-seed gate.

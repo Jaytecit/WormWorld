@@ -1,5 +1,11 @@
 """Authoritative headless world implementations."""
 
+from worm_world.world.detritus import (
+    DetritusConfig,
+    DetritusDecay,
+    DetritusPool,
+    DetritusTransfer,
+)
 from worm_world.world.noop import NoOpWorld
 from worm_world.world.plants import PlantGrowth, PlantPatch, PlantPatchConfig
 from worm_world.world.population import (
@@ -19,6 +25,10 @@ from worm_world.world.sandbox import (
 )
 
 __all__ = [
+    "DetritusConfig",
+    "DetritusDecay",
+    "DetritusPool",
+    "DetritusTransfer",
     "EntityStepResult",
     "InitialOrganismConfig",
     "NoOpWorld",

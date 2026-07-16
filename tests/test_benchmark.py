@@ -1,6 +1,7 @@
 """Smoke test for the executable fixed-step benchmark."""
 
 from worm_world.benchmark import (
+    benchmark_detritus,
     benchmark_noop,
     benchmark_plants,
     benchmark_population,
@@ -37,6 +38,14 @@ def test_population_benchmark_measures_each_requested_step() -> None:
 
 def test_plant_benchmark_measures_each_requested_step() -> None:
     result = benchmark_plants(2, population_size=4)
+
+    assert result.steps == 2
+    assert result.elapsed_seconds > 0.0
+    assert result.steps_per_second > 0.0
+
+
+def test_detritus_benchmark_measures_each_requested_step() -> None:
+    result = benchmark_detritus(2, population_size=4)
 
     assert result.steps == 2
     assert result.elapsed_seconds > 0.0

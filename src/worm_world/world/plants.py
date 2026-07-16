@@ -136,6 +136,11 @@ class PlantPatch:
         self.biomass_energy = max(0.0, self.biomass_energy - amount)
         self.total_biomass_consumed += amount
 
+    def receive_nutrients(self, amount: float) -> None:
+        if not math.isfinite(amount) or amount < 0.0:
+            raise ValueError("nutrient return must be finite and non-negative")
+        self.nutrients += amount
+
     def state_dict(self) -> dict[str, JsonValue]:
         return {
             "biomass_energy": self.biomass_energy,
